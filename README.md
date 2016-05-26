@@ -1,1 +1,2 @@
-# PocketMine-Plugin-Login
+# PocketMine-Plugin / LoginAuth
+
