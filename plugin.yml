@@ -1,0 +1,20 @@
+name: LoginAuth
+main: LoginAuth\Main
+version: "1.0"
+api: [2.0.0]
+load: STARTUP
+author: Jhelom
+description: ログイン認証
+website: https://github.com/jhelom/PocketMine-Plugin-LoginAuth
+
+commands:
+  login:
+    description: "ログイン(LoginAuth)"
+    usage: "/login <password>"
+  register:
+    description: "アカウント登録(LoginAuth)"
+    usage: "/register <password>"
+  auth:
+    description: "アカウント管理(LoginAuth)"
+    usage: "/auth [ help | unregister | password | forget ]"
+
