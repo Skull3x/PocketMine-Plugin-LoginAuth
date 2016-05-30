@@ -17,9 +17,6 @@ class Account
     public $passwordHash;
 
     // パスワードハッシュ
-    public $passwordErrorCount;
-
-    // パスワードエラー回数
     public $securityStamp;
 
     // セキュリティスタンプ
@@ -29,6 +26,7 @@ class Account
 
     /**
      * コンストラクタ
+     *
      * @param bool $isNull
      */
     function __construct(bool $isNull = false)
