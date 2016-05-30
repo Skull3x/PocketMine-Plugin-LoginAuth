@@ -5,9 +5,9 @@ namespace LoginAuth;
 
 class Account
 {
+    // 名前
     public $name;
 
-    // 名前
     public $clientId;
 
     // 端末ID
