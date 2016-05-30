@@ -1,10 +1,10 @@
 version: 1.0
 
 #　パスワードの文字数の下限
-passwordLengthMin: 4
+passwordLengthMin: 5
 
 # パスワードの文字数の上限
-passwordLengthMax: 16
+passwordLengthMax: 20
 
 # １つの端末で作成可能なアカウント数の上限
 accountSlot: 2

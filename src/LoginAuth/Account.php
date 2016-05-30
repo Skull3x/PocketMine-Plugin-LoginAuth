@@ -5,18 +5,34 @@ namespace LoginAuth;
 
 class Account
 {
-    // プレイヤー名
     public $name;
 
-    // クライアントID
+    // 名前
     public $clientId;
 
-    // IPアドレス
+    // 端末トID
     public $ip;
 
-    // パスワードハッシュ
+    // IPアドレス
     public $passwordHash;
 
-    // セキュリティスタンプ
+    // パスワードハッシュ
+    public $passwordErrorCount;
+
+    // パスワードエラー回数
     public $securityStamp;
+
+    // セキュリティスタンプ
+    public $isNull;
+
+    // オブジェクトが無効である（データベースに存在しない）ことを示す
+
+    /**
+     * コンストラクタ
+     * @param bool $isNull
+     */
+    function __construct(bool $isNull = false)
+    {
+        $this->isNull = $isNull;
+    }
 }
