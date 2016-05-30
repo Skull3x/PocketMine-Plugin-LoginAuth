@@ -10,7 +10,7 @@ class Account
     // 名前
     public $clientId;
 
-    // 端末トID
+    // 端末ID
     public $ip;
 
     // IPアドレス
@@ -22,7 +22,7 @@ class Account
     // セキュリティスタンプ
     public $isNull;
 
-    // オブジェクトが無効である（データベースに存在しない）ことを示す
+    // オブジェクトが無効（データベースに存在しない）なら true
 
     /**
      * コンストラクタ
