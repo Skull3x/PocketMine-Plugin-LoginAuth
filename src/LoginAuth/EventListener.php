@@ -212,6 +212,7 @@ class EventListener implements Listener
     /**
      * コマンドを処理する、正常に処理が完了した場合 true を返す
      *
+     * @param array $itemList
      * @param Player $player
      * @param array $args
      * @return bool
@@ -345,14 +346,14 @@ class EventListener implements Listener
         // エンティティが Playerクラスで
         if ($entity instanceof Player) {
             // 認証済みの場合
-            if ($this->main->isAuthenticated($player)) {
+            if ($this->main->isAuthenticated($entity)) {
                 // 何もしないでリターン
                 return;
             }
 
             // イベントをキャンセル
             $event->setCancelled(true);
-            $this->sendAuthMessage($player);
+            $this->sendAuthMessage($entity);
             return;
         }
     }
@@ -455,6 +456,7 @@ class EventListener implements Listener
         }
     }
 
+    /** @noinspection PhpUnusedPrivateMethodInspection */
     private function dispatchRegister(Player $player, array $args) : bool
     {
         $this->main->getLogger()->debug("dispatchRegister: ");
@@ -465,7 +467,7 @@ class EventListener implements Listener
             return false;
         }
 
-        $player->sendMessage(TextFormat::GREEN . $this->main->getMessage()->registerConfirm());
+        $player->sendMessage(TextFormat::RED . $this->main->getMessage()->registerConfirm());
 
         $this->commandHookQueue->enqueue([$this, "dispatchRegisterConfirm"], $player, $password);
 
@@ -541,9 +543,7 @@ class EventListener implements Listener
             return false;
         }
 
-        $key = $this->makeHookKey($player);
-        $this->changePasswordConfirmList[$key] = $password;
-        $player->sendMessage("確認のためもう一度パスワードを入力してください");
+        $player->sendMessage(TextFormat::RED . $this->main->getMessage()->passwordConfirm());
 
         return true;
     }

@@ -1,26 +1,26 @@
-register: はじめにアカウント登録してください。
+register: はじめにアカウント登録してください
 registerUsage: /register <password>
 registerConfirm: 確認のためもう一度パスワードを入力してください
-registerConfirmError: パスワードが違います。もう一度最初からやり直してください。
+registerConfirmError: パスワードが違います。もう一度最初からやり直してください
 registerSuccessful: アカウント登録しました
 alreadyExistsName: 名前 {name} は既に登録されています。別の名前に変更してください
 login: ログイン認証してください。
 loginUsage: /login <password>
 loginSuccessful: ログイン認証しました
-alreadyLogin: 既にログイン認証済みです
-passwordRequired: パスワードを入力してください。
+alreadyLogin: ログイン認証済みです
+passwordRequired: パスワードを入力してください
 passwordError: パスワードが違います
 passwordConfirm: 確認のためもう一度パスワードを入力してください
 passwordLengthMin: パスワードは{length}文字以上にしてください
 passwordLengthMax: パスワードは{length}文字以下にしてください
 passwordChangeUsage: /password <newPassword>
-passwordChangeRequired: 新しいパスワードを入力してください。
+passwordChangeRequired: 新しいパスワードを入力してください
 passwordChangeSuccessful: パスワードを変更しました
-accountSlotOver1: １つの端末で登録可能なアカウント数の上限は {accountSlot}です。この端末ではこれ以上アカウントを登録することはできません。
-accountSlotOver2: この端末で登録されていアカウントの一覧は次の通りです。名前を変更してログインしなおしてください。
+accountSlotOver1: １つの端末で登録可能なアカウント数の上限は {accountSlot}です。この端末ではこれ以上アカウントを登録することはできません
+accountSlotOver2: この端末で登録されていアカウントの一覧は次の通りです。名前を変更してログインしなおしてください
 unregisterUsage: /unregisger <password>
 unregisterNotFound: アカウントは存在しません
-unregisterPasswordRequired: アカウントを削除するにはパスワードも入力してくだし。
-unregisterError: パスワードが違います。アカウントを削除できませんでした。
+unregisterPasswordRequired: アカウントを削除するにはパスワードも入力してくだし
+unregisterPasswordError: パスワードが違います。アカウントを削除できませんでした
 unregisterConfirm: 本当にアカウントを削除しますか？削除するなら Y を、取消すなら N を入力してください
 unregisterSuccessful: アカウントを削除しました

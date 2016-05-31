@@ -76,14 +76,6 @@ _SQL_;
         $this->task = null;
     }
 
-    /**
-     * コマンドが実行されるときのイベント
-     *
-     * @param CommandSender $sender
-     * @param Command $command
-     * @param string $label
-     * @param array $args
-     */
     public function onCommand(CommandSender $sender, Command $command, $label, array $args)
     {
         $this->getLogger()->debug("onCommand: " . $sender->getName() . ": " . $command->getName());
@@ -116,6 +108,11 @@ _SQL_;
         }
     }
 
+    public function getSecurityStampManager() : SecurityStampManager
+    {
+        return $this->securityStampManager;
+    }
+
     /**
      * アカウントを登録する
      *
@@ -132,7 +129,7 @@ _SQL_;
         }
 
         // パスワード検証
-        if (!$this->validatePassword($player, $password, $this->getMessage()->psswordRequired())) {
+        if (!$this->validatePassword($player, $password, $this->getMessage()->passwordRequired())) {
             // 失敗ならリターン
             return false;
         }
@@ -186,13 +183,10 @@ _SQL_;
         $stmt->bindValue(":clientId", $player->getClientId(), \PDO::PARAM_STR);
         $stmt->bindValue(":ip", $player->getAddress(), \PDO::PARAM_STR);
         $stmt->bindValue(":passwordHash", $this->makePasswordHash($password), \PDO::PARAM_STR);
-        $stmt->bindValue(":securityStamp", $this->makeSecurityStamp($player), \PDO::PARAM_STR);
+        $stmt->bindValue(":securityStamp", $this->getSecurityStampManager()->makeStamp($player), \PDO::PARAM_STR);
         $stmt->execute();
 
-        $this->securityStampManager->add($player);
-
-        // メッセージ表示タスクからプレイヤーを削除
-        $this->getTask()->removePlayer($player);
+        $this->getSecurityStampManager()->add($player);
 
         // メッセージ表示
         $player->sendMessage(TextFormat::GREEN . $this->getMessage()->registerSuccessful());
@@ -239,7 +233,7 @@ _SQL_;
         }
 
         // データベースのセキュリティスタンプを更新
-        $securityStamp = $this->securityStampManager->makeStamp($player);
+        $securityStamp = $this->getSecurityStampManager()->makeStamp($player);
         $name = strtolower($player->getName());
 
         $sql = "UPDATE account SET securityStamp = :securityStamp WHERE name = :name";
@@ -249,10 +243,7 @@ _SQL_;
         $stmt->execute();
 
         // セキュリティスタンプマネージャーに登録
-        $this->securityStampManager->add($player);
-
-        // メッセージ表示タスクからプレイヤーを削除
-        $this->getTask()->removePlayer($player);
+        $this->getSecurityStampManager()->add($player);
 
         // ログイン成功メッセージを表示
         $player->sendMessage(TextFormat::GREEN . $this->getMessage()->loginSuccessful());
@@ -333,7 +324,7 @@ _SQL_;
      */
     public function isAuthenticated(Player $player) :bool
     {
-        if ($this->securityStampManager->validate($player)) {
+        if ($this->getSecurityStampManager()->validate($player)) {
             // 認証済みを示す true を返す
             return true;
         }
@@ -344,8 +335,8 @@ _SQL_;
         // アカウントがアカウントが存在する
         if (!$account->isNull) {
             // セキュリティスタンプを比較して同じなら
-            if ($account->securityStamp === $this->securityStampManager->makeStamp($player)) {
-                $this->securityStampManager->add($player);
+            if ($account->securityStamp === $this->getSecurityStampManager()->makeStamp($player)) {
+                $this->getSecurityStampManager()->add($player);
 
                 // 認証済みを示す true を返す
                 return true;
@@ -457,7 +448,7 @@ _SQL_;
         $stmt->execute();
 
         // セッション削除
-        $this->removeCache($player);
+        $this->getSecurityStampManager()->remove($player);
 
         // プレイヤーを強制ログアウト
         $player->close("アカウントを削除しました。");

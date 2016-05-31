@@ -45,7 +45,7 @@ class MessageResource
      */
     public function alreadyLogin() : string
     {
-        return $this->get("alreadylogin");
+        return $this->get("alreadyLogin");
     }
 
     /**
@@ -73,9 +73,9 @@ class MessageResource
         return $this->get("passwordRequired");
     }
 
-    public function accountSlotOver1(integer $accountSolt): string
+    public function accountSlotOver1(integer $accountSlot): string
     {
-        return $this->get("accountSlotOver1", ["accountSlot" => $accountSolt]);
+        return $this->get("accountSlotOver1", ["accountSlot" => $accountSlot]);
     }
 
     public function accountSlotOver2(): string
@@ -113,6 +113,16 @@ class MessageResource
         return $this->get("registerSuccessful");
     }
 
+    public function passwordError() : string
+    {
+        return $this->get("passwordError");
+    }
+
+    public function passwordConfirm() : string
+    {
+        return $this->get("passwordConfirm");
+    }
+
     public function passwordLengthMin(integer $length) : string
     {
         return $this->get("passwordLengthMin", ["length" => $length]);
@@ -147,6 +157,12 @@ class MessageResource
     {
         return $this->get("unregisterPasswordRequired");
     }
+
+    public function unregisterPasswordError() : string
+    {
+        return $this->get("unregisterPasswordError");
+    }
+
 
     public function login() : string
     {
