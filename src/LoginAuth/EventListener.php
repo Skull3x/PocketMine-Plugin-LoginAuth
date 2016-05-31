@@ -145,7 +145,7 @@ class EventListener implements Listener
         // 認証済みなら
         if ($this->main->isAuthenticated($player)) {
             // ログイン認証済みメッセージ表示
-            $player->sendMessage(TextFormat::GREEN . $this->main->getMessage()->alreadyLogin());
+            $player->sendMessage(TextFormat::GREEN . $this->main->getMessage("alreadyLogin"));
         } else {
             $this->sendAuthMessage($player);
         }
@@ -225,18 +225,11 @@ class EventListener implements Listener
         // キーが存在すれば
         if (array_key_exists($command, $itemList)) {
             $item = $itemList[$command];
-
-            // 配列なら
-            if (is_array($item)) {
-                // 再帰呼び出し
-                return $this->dispatch($item, $player, $args);
-            } else {
-                // 各処理を呼び出し
-                return call_user_func([$this, $item], $player, $args);
-            }
+            call_user_func([$this, $item], $player, $args);
+            return true;
+        } else {
+            return false;
         }
-
-        return false;
     }
 
     /**
@@ -456,39 +449,42 @@ class EventListener implements Listener
         }
     }
 
-    /** @noinspection PhpUnusedPrivateMethodInspection */
-    private function dispatchRegister(Player $player, array $args) : bool
+    private function dispatchRegister(Player $player, array $args)
     {
         $this->main->getLogger()->debug("dispatchRegister: ");
 
-        $password = array_shift($args) ?? "";
+        $account = $this->main->findAccountByName($player->getName());
 
-        if (!$this->main->validatePassword($player, $password)) {
-            return false;
+        // データベースに同じ名前のアカウントが既に存在する場合
+        if (!$account->isNull) {
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage("alreadyExistsName", ["name" => $player->getName()]));
+            return;
         }
 
-        $player->sendMessage(TextFormat::RED . $this->main->getMessage()->registerConfirm());
+        $password = array_shift($args) ?? "";
+
+        if (!$this->main->validatePassword($player, $password, $this->main->getMessage("passwordRequired"))) {
+            return;
+        }
+
+        $player->sendMessage(TextFormat::RED . $this->main->getMessage("registerConfirm"));
 
         $this->commandHookQueue->enqueue([$this, "dispatchRegisterConfirm"], $player, $password);
-
-        return true;
     }
 
-    private function dispatchRegisterConfirm(Player $player, array $args, CommandHook $hook) : bool
+    private function dispatchRegisterConfirm(Player $player, array $args, CommandHook $hook)
     {
         $this->main->getLogger()->debug("dispatchRegisterConfirm: ");
 
         $password = array_shift($args) ?? "";
 
         if ($hook->data !== $password) {
-            $player->sendMessage(TextFormat::RED . $this->main->getMessage()->registerConfirmError());
-            $player->sendMessage(TextFormat::RED . $this->main->getMessage()->registerUsage());
-            return false;
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage("registerConfirmError"));
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage("registerUsage"));
+            return;
         }
 
         $this->main->register($player, $password);
-
-        return true;
     }
 
 
@@ -497,19 +493,43 @@ class EventListener implements Listener
      * @param array $args
      * @return bool
      */
-    private function dispatchUnregister(Player $player, array $args) : bool
+    private function dispatchUnregister(Player $player, array $args)
     {
         $this->main->getLogger()->debug("dispatchUnregister: ");
 
         $password = array_shift($args) ?? "";
-        $this->main->unregister($player, $password);
 
-        return true;
+        if (!$this->main->validatePassword($player, $password, $this->main->getMessage("unregisterPasswordRequired"))) {
+            return;
+        }
+
+        $account = $this->main->findAccountByName($player->getName());
+
+        if ($account->isNull) {
+            $this->main->getLogger()->warning("dispatchUnregister: " . $player->getName() . "のアカウントが存在しない");
+            return;
+        }
+
+        if ($account->passwordHash !== $this->main->makePasswordHash($password)) {
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage("unregisterPasswordError"));
+            return;
+        }
+
+        $player->sendMessage(TextFormat::RED . $this->main->getMessage("unregisterConfirm"));
+
+        $this->commandHookQueue->enqueue([$this, "dispatchUnregisterConfirm"], $player, $password);
     }
 
-    private function dispatchUnregisterConfirm(Player $player, array $args) : bool
+    private function dispatchUnregisterConfirm(Player $player, array $args, CommandHook $hook)
     {
-        return true;
+        $input = strtolower(array_shift($args) ?? "");
+
+        if ($input !== "y") {
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage("unregisterCancel"));
+            return;
+        }
+
+        $this->main->unregister($player, $hook->data);
     }
 
     /**
@@ -517,14 +537,12 @@ class EventListener implements Listener
      * @param array $args
      * @return bool
      */
-    private function dispatchLogin(Player $player, array $args) : bool
+    private function dispatchLogin(Player $player, array $args)
     {
         $this->main->getLogger()->debug("dispatchLogin: ");
 
         $password = array_shift($args) ?? "";
         $this->main->login($player, $password);
-
-        return true;
     }
 
 
@@ -533,24 +551,23 @@ class EventListener implements Listener
      * @param array $args
      * @return bool
      */
-    private function dispatchChangePassword(Player $player, array $args) : bool
+    private function dispatchChangePassword(Player $player, array $args)
     {
         $this->main->getLogger()->debug("dispatchChangePassword: ");
 
         $password = array_shift($args) ?? "";
 
-        if (!$this->main->validatePassword($player, $password, "新しいパスワードを入力してください")) {
-            return false;
+        if (!$this->main->validatePassword($player, $password, $this->main->getMessage("passwordRequired"))) {
+            return;
         }
 
-        $player->sendMessage(TextFormat::RED . $this->main->getMessage()->passwordConfirm());
-
-        return true;
+        $player->sendMessage(TextFormat::RED . $this->main->getMessage("passwordConfirm"));
+        $this->commandHookQueue->enqueue([$this, "dispatchChangePasswordConfirm"], $player, $password);
     }
 
-    private function dispatchChangePasswordConfirm(Player $player, array $args) : bool
+    private function dispatchChangePasswordConfirm(Player $player, array $args, CommandHook $hook)
     {
-        return true;
+        $this->main->getLogger()->debug("dispatchChangePasswordConfirm: ");
     }
 
     private function sendAuthMessage(Player $player)
@@ -571,12 +588,12 @@ class EventListener implements Listener
 
         if ($this->main->isRegistered($player)) {
             // ログインしてもらう
-            $player->sendMessage(TextFormat::RED . $this->main->getMessage()->login());
-            $player->sendMessage(TextFormat::RED . $this->main->getMessage()->loginUsage());
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage("login"));
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage("loginUsage"));
         } else {
             // 未登録ならアカウント登録してもらう
-            $player->sendMessage(TextFormat::RED . $this->main->getMessage()->register());
-            $player->sendMessage(TextFormat::RED . $this->main->getMessage()->registerUsage());
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage("register"));
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage("registerUsage"));
         }
     }
 }

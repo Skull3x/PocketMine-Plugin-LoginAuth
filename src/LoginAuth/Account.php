@@ -30,5 +30,8 @@ class Account
     // セキュリティスタンプ
     public $securityStamp;
 
+    // 削除済みなら 1
+    public $isDeleted;
+
     public $isNull;
 }

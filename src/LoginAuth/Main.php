@@ -7,10 +7,10 @@ use pocketmine\command\CommandSender;
 use pocketmine\level;
 use pocketmine\Player;
 use pocketmine\plugin\PluginBase;
+use pocketmine\utils\Config;
 use pocketmine\utils\TextFormat;
 
 require_once("Account.php");
-require_once("SecurityStampManager.php");
 
 class Main extends PluginBase
 {
@@ -20,13 +20,10 @@ class Main extends PluginBase
     // リスナー
     private $listener;
 
-    // タスク
-    private $task;
-
     // メッセージリソース
     private $messageResource;
 
-    // セキュリティスタンプ
+    // セキュリティスタンプマネージャー
     private $securityStampManager;
 
     // データベース初期化SQL
@@ -37,6 +34,7 @@ CREATE TABLE [account] (
 [ip] TEXT NOT NULL,
 [passwordHash] TEXT NOT NULL,
 [securityStamp] TEXT NOT NULL,
+[isDeleted] INTEGER DEFAULT 0,
 PRIMARY KEY(name)
 );                
 _SQL_;
@@ -55,7 +53,7 @@ _SQL_;
         $this->reloadConfig();
 
         // メッセージリソースを初期化
-        $this->messageResource = new MessageResource($this);
+        $this->loadMessageResource("ja");
 
         // セキュリティスタンプマネージャーを初期化
         $this->securityStampManager = new SecurityStampManager();
@@ -73,12 +71,56 @@ _SQL_;
      */
     public function onDisable()
     {
-        $this->task = null;
     }
 
     public function onCommand(CommandSender $sender, Command $command, $label, array $args)
     {
         $this->getLogger()->debug("onCommand: " . $sender->getName() . ": " . $command->getName());
+    }
+
+    /**
+     * メッセージリソースをロード
+     *
+     * @param string $locale
+     */
+    private function loadMessageResource(string $locale)
+    {
+        // 引数をもとにファイルのパスを組み立て
+        $file = "messages-" . $locale . ".yml";
+        $path = $this->getDataFolder() . $file;
+
+        // ファイルが不在なら
+        if (!file_exists($path)) {
+            // 日本語ファイルのパスにする
+            $file = "messages-ja.yml";
+            $path = $this->getDataFolder() . $file;
+        }
+
+        // リソースをセーブ
+        $this->saveResource($file);
+
+        // リソースをロード
+        $this->messageResource = new Config($path, Config::YAML);
+    }
+
+    /**
+     * メッセージを取得
+     *
+     * @param string $key
+     * @param array|NULL $args
+     * @return string
+     */
+    public function getMessage(string $key, array $args = NULL) : string
+    {
+        $message = $this->messageResource->get($key);
+
+        if (is_array($args)) {
+            foreach ($args as $key => $value) {
+                $message = str_replace("{" . $key . "}", $value, $message);
+            }
+        }
+
+        return $message;
     }
 
     /**
@@ -124,12 +166,12 @@ _SQL_;
     {
         // 認証済みなら
         if ($this->isAuthenticated($player)) {
-            $player->sendMessage(TextFormat::GREEN . $this->getMessage()->alreadyLogin());
+            $player->sendMessage(TextFormat::GREEN . $this->getMessage("alreadyLogin"));
             return false;
         }
 
         // パスワード検証
-        if (!$this->validatePassword($player, $password, $this->getMessage()->passwordRequired())) {
+        if (!$this->validatePassword($player, $password, $this->getMessage("passwordRequired"))) {
             // 失敗ならリターン
             return false;
         }
@@ -157,8 +199,8 @@ _SQL_;
             // 名前一覧をカンマで連結
             $nameListStr = $name = implode(",", $nameList);
 
-            $player->sendMessage(TextFormat::RED . $this->getMessage()->accountSlotOver1($accountSlot));
-            $player->sendMessage(TextFormat::RED . $this->getMessage()->accountSlotOver2());
+            $player->sendMessage(TextFormat::RED . $this->getMessage("accountSlotOver1", ["accountSlot" => $accountSlot]));
+            $player->sendMessage(TextFormat::RED . $this->getMessage("accountSlotOver2"));
             $player->sendMessage(TextFormat::RED . $nameListStr);
 
             return false;
@@ -172,7 +214,7 @@ _SQL_;
 
         // データベースに同じ名前のアカウントが既に存在する場合
         if (!$account->isNull) {
-            $player->sendMessage(TextFormat::RED . $this->getMessage()->alreadyExistsName($player->getName()));
+            $player->sendMessage(TextFormat::RED . $this->getMessage("alreadyExistsName", ["name" => $player->getName()]));
             return false;
         }
 
@@ -189,7 +231,7 @@ _SQL_;
         $this->getSecurityStampManager()->add($player);
 
         // メッセージ表示
-        $player->sendMessage(TextFormat::GREEN . $this->getMessage()->registerSuccessful());
+        $player->sendMessage(TextFormat::GREEN . $this->getMessage("registerSuccessful"));
 
         return true;
     }
@@ -203,22 +245,27 @@ _SQL_;
      */
     public function login(Player $player, string $password):bool
     {
-        // 空白文字を除去
-        $password = trim($password);
-
-        // パスワードを検証
-        if (!$this->validatePassword($player, $password, $this->getMessage()->passwordRequired())) {
-            // 検証失敗ならリターン
-            return false;
-        }
-
         // 名前をもとにデータベースからアカウントを検索する
         $account = $this->findAccountByName($player->getName());
 
         // アカウントが不在なら
         if ($account->isNull) {
-            // メッセージを表示してリターン
-            $player->sendMessage(TextFormat::RED . $this->getMessage()->register());
+            $player->sendMessage(TextFormat::RED . $this->getMessage("register"));
+            return false;
+        }
+
+        // アカウントの削除フラグが立っていたら
+        if ($account->isDeleted) {
+            $player->sendMessage(TextFormat::RED . $this->getMessage("accountDeleted", ["name" => $player->getName()]));
+            return false;
+        }
+
+        // 空白文字を除去
+        $password = trim($password);
+
+        // パスワードを検証
+        if (!$this->validatePassword($player, $password, $this->getMessage("passwordRequired"))) {
+            // 検証失敗ならリターン
             return false;
         }
 
@@ -228,7 +275,7 @@ _SQL_;
         // パスワードハッシュを比較
         if ($account->passwordHash != $passwordHash) {
             // パスワード不一致メッセージを表示してリターン
-            $player->sendMessage(TextFormat::RED . $this->getMessage()->passwordError());
+            $player->sendMessage(TextFormat::RED . $this->getMessage("passwordError"));
             return false;
         }
 
@@ -246,15 +293,10 @@ _SQL_;
         $this->getSecurityStampManager()->add($player);
 
         // ログイン成功メッセージを表示
-        $player->sendMessage(TextFormat::GREEN . $this->getMessage()->loginSuccessful());
+        $player->sendMessage(TextFormat::GREEN . $this->getMessage("loginSuccessful"));
 
         // 正常終了を示す true を返す
         return true;
-    }
-
-    public function getMessage() : MessageResource
-    {
-        return $this->messageResource;
     }
 
     /**
@@ -266,7 +308,15 @@ _SQL_;
     {
         $account = $this->findAccountByName($player->getName());
 
-        return $account->isNull === false;
+        if ($account->isNull) {
+            return false;
+        }
+
+        if ($account->isDeleted) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -276,7 +326,7 @@ _SQL_;
      * @param string $name
      * @return account
      */
-    private function findAccountByName(string $name) : Account
+    public function findAccountByName(string $name) : Account
     {
         $sql = "SELECT * FROM account WHERE name = :name ORDER BY name";
         $stmt = $this->preparedStatement($sql);
@@ -333,18 +383,22 @@ _SQL_;
         $account = $this->findAccountByName(strtolower($player->getName()));
 
         // アカウントがアカウントが存在する
-        if (!$account->isNull) {
-            // セキュリティスタンプを比較して同じなら
-            if ($account->securityStamp === $this->getSecurityStampManager()->makeStamp($player)) {
-                $this->getSecurityStampManager()->add($player);
-
-                // 認証済みを示す true を返す
-                return true;
-            }
+        if ($account->isNull) {
+            return false;
         }
 
-        // 未認証を示す false を返す
-        return false;
+        // 削除フラグが立っていたら
+        if ($account->isDeleted) {
+            return false;
+        }
+
+        // セキュリティスタンプを比較して同じなら
+        if ($account->securityStamp !== $this->getSecurityStampManager()->makeStamp($player)) {
+            return false;
+        }
+
+        $this->getSecurityStampManager()->add($player);
+        return true;
     }
 
     /**
@@ -355,7 +409,7 @@ _SQL_;
      * @param string $emptyErrorMessage
      * @return bool
      */
-    public function validatePassword(Player $player, string $password, string $emptyErrorMessage = "パスワードを入力してください") : bool
+    public function validatePassword(Player $player, string $password, string $emptyErrorMessage) : bool
     {
         if ($password === "") {
             $player->sendMessage(TextFormat::RED . $emptyErrorMessage);
@@ -373,13 +427,13 @@ _SQL_;
 
         // パスワードが短い場合
         if ($passwordLength < $passwordLengthMin) {
-            $player->sendMessage(TextFormat::RED . $this->getMessage()->passwordLengthMin($passwordLengthMin));
+            $player->sendMessage(TextFormat::RED . $this->getMessage("passwordLengthMin", ["length" => $passwordLengthMin]));
             return false;
         }
 
         // パスワードが長い場合
         if ($passwordLength > $passwordLengthMax) {
-            $player->sendMessage(TextFormat::RED . $this->getMessage()->passwordLengthMax($passwordLengthMax));
+            $player->sendMessage(TextFormat::RED . $this->getMessage("passwordLengthMax", ["length" => $passwordLengthMax]));
             return false;
         }
 
@@ -395,7 +449,7 @@ _SQL_;
      */
     private function findAccountsByClientId(string $clientId) : array
     {
-        $sql = "SELECT * FROM account WHERE clientId = :clientId ORDER BY name";
+        $sql = "SELECT * FROM account WHERE clientId = :clientId AND isDeleted == 0 ORDER BY name";
         $stmt = $this->preparedStatement($sql);
         $stmt->bindValue(":clientId", $clientId, \PDO::PARAM_STR);
         $stmt->execute();
@@ -411,7 +465,7 @@ _SQL_;
      * @param string $password
      * @return string
      */
-    private function makePasswordHash(string $password) : string
+    public function makePasswordHash(string $password) : string
     {
         return hash("sha256", $password);
     }
@@ -425,33 +479,36 @@ _SQL_;
      */
     public function unregister(Player $player, string $password) :bool
     {
-        $account = $this->findAccountByName($player);
+        if ($password === "") {
+            $player->sendMessage(TextFormat::RED . $this->getMessage("unregisterPasswordRequired"));
+            return false;
+        }
+
+        $account = $this->findAccountByName($player->getName());
 
         if ($account->isNull) {
-            $player->sendMessage(TextFormat::RED . $this->getMessage()->unregisterNotFound());
+            $player->sendMessage(TextFormat::RED . $this->getMessage("unregisterNotFound"));
             return false;
         }
 
         $passwordHash = $this->makePasswordHash($password);
 
         if ($account->passwordHash !== $passwordHash) {
-            $player->sendMessage(TextFormat::RED . $this->getMessage()->unregisterPasswordError());
-
-            // 異常終了を示す false を返す
+            $player->sendMessage(TextFormat::RED . $this->getMessage("unregisterPasswordError"));
             return false;
         }
 
-        $sql = "DELETE account WHERE name = :name AND passwordHash = :passwordHash";
+        // データベースの削除フラグを１に更新
+        $sql = "UPDATE account SET isDeleted = 1 WHERE name = :name";
         $stmt = $this->preparedStatement($sql);
         $stmt->bindValue(":name", strtolower($player->getName()), \PDO::PARAM_STR);
-        $stmt->bindValue(":passwordHash", $this->makePasswordHash($password), \PDO::PARAM_STR);
         $stmt->execute();
 
-        // セッション削除
+        // セキュリティスタンプマネージャーから削除
         $this->getSecurityStampManager()->remove($player);
 
         // プレイヤーを強制ログアウト
-        $player->close("アカウントを削除しました。");
+        $player->close("", $this->getMessage("unregisterSuccessful"));
 
         return true;
     }
@@ -467,7 +524,7 @@ _SQL_;
     {
         $newPassword = trim($newPassword);
 
-        if (!$this->validatePassword($player, $newPassword, $this->getMessage()->passwordChangeRequired())) {
+        if (!$this->validatePassword($player, $newPassword, $this->getMessage("passwordChangeRequired"))) {
             return false;
         }
 
@@ -479,7 +536,7 @@ _SQL_;
         $stmt->bindValue(":passwordHash", $this->makePasswordHash($newPassword));
         $stmt->execute();
 
-        $player->sendMessage(TextFormat::GREEN . $this->getMessage()->passwordChangeSuccessful());
+        $player->sendMessage(TextFormat::GREEN . $this->getMessage("passwordChangeSuccessful"));
 
         return true;
     }
