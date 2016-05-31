@@ -4,6 +4,8 @@ namespace LoginAuth;
 
 use pocketmine\Player;
 
+require_once("CommandHook.php");
+
 class CommandHookQueue
 {
     private $list = [];
@@ -45,7 +47,7 @@ class CommandHookQueue
         return $hook;
     }
 
-    public function enqueue(Player $player, CommandHook $hook)
+    public function enqueue(array $callback, Player $player, $data)
     {
         $key = $this->makeKey($player);
 
@@ -53,7 +55,19 @@ class CommandHookQueue
             $this->list[$key] = [];
         }
 
+        $hook = new CommandHook();
+        $hook->player = $player;
+        $hook->callback = $callback;
+        $hook->data = $data;
+
         array_push($this->list[$key], $hook);
+    }
+
+    public function clear(Player $player)
+    {
+        $key = $this->makeKey($player);
+
+        unset($this->list[$key]);
     }
 }
 

@@ -39,6 +39,16 @@ class MessageResource
     }
 
     /**
+     * 既にログイン認証済み
+     *
+     * @return string
+     */
+    public function alreadyLogin() : string
+    {
+        return $this->get("alreadylogin");
+    }
+
+    /**
      * メッセージを取得してフォーマットした結果を返す
      *
      * @param string $key
@@ -58,21 +68,6 @@ class MessageResource
         return $message;
     }
 
-    /**
-     * 既にログイン認証済み
-     *
-     * @return string
-     */
-    public function alreadyLogin() : string
-    {
-        return $this->get("alreadylogin");
-    }
-
-    /**
-     * パスワード未入力
-     *
-     * @return string
-     */
     public function passwordRequired() : string
     {
         return $this->get("passwordRequired");
@@ -83,7 +78,7 @@ class MessageResource
         return $this->get("accountSlotOver1", ["accountSlot" => $accountSolt]);
     }
 
-    public function accountSlotOlver2(): string
+    public function accountSlotOver2(): string
     {
         return $this->get("accountSlotOver2");
     }
@@ -91,6 +86,26 @@ class MessageResource
     public function alreadyExistsName(string $name) : string
     {
         return $this->get("alreadyExistsName", ["name" => $name]);
+    }
+
+    public function register(): string
+    {
+        return $this->get("register");
+    }
+
+    public function registerUsage(): string
+    {
+        return $this->get("registerUsage");
+    }
+
+    public function registerConfirm(): string
+    {
+        return $this->get("registerConfirm");
+    }
+
+    public function registerConfirmError(): string
+    {
+        return $this->get("registerConfirmError");
     }
 
     public function registerSuccessful(): string
@@ -106,11 +121,6 @@ class MessageResource
     public function passwordLengthMax(integer $length) : string
     {
         return $this->get("passwordLengthMax", ["length" => $length]);
-    }
-
-    public function registerFirst(): string
-    {
-        return $this->get("registerFirst");
     }
 
     public function loginSuccessful() : string
@@ -143,4 +153,8 @@ class MessageResource
         return $this->get("login");
     }
 
+    public function loginUsage() : string
+    {
+        return $this->get("loginUsage");
+    }
 }

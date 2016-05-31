@@ -20,20 +20,26 @@ use pocketmine\event\player\PlayerRespawnEvent;
 use pocketmine\Player;
 use pocketmine\utils\TextFormat;
 
+require_once("CommandHook.php");
+require_once("CommandHookQueue.php");
+
 class EventListener implements Listener
 {
+    // メッセージ表示間隔を秒単位で指定
+    const SHOW_MESSAGE_INTERVAL_SECONDS = 5;
+
     private $main;
 
     private $commandHookQueue;
 
+    private $sendAuthMessageTime = [];
+
     // コマンドテーブル
     private static $commandTable = [
         "register" => "dispatchRegister",
+        "unregister" => "dispatchUnregister",
         "login" => "dispatchLogin",
-        "auth" => [
-            "unregister" => "dispatchUnregister",
-            "password" => "dispatchChangePassword",
-        ]
+        "password" => "dispatchChangePassword",
     ];
 
     /**
@@ -136,13 +142,12 @@ class EventListener implements Listener
         // プレイヤーを取得
         $player = $event->getPlayer();
 
-
         // 認証済みなら
         if ($this->main->isAuthenticated($player)) {
-            $player->sendMessage(TextFormat::GREEN . "ログイン認証済みです");
+            // ログイン認証済みメッセージ表示
+            $player->sendMessage(TextFormat::GREEN . $this->main->getMessage()->alreadyLogin());
         } else {
-            // 未認証ならメッセージ表示タスクにプレイヤーを追加
-            $this->main->getTask()->addPlayer($player);
+            $this->sendAuthMessage($player);
         }
     }
 
@@ -157,8 +162,12 @@ class EventListener implements Listener
         // プレイヤーを取得
         $player = $event->getPlayer();
 
-        // メッセージ表示タスクからプレイヤーを削除
-        $this->main->getTask()->removePlayer($player);
+        // コマンドフックをクリア
+        $this->commandHookQueue->clear($player);
+
+        // メッセージ表示時刻を削除
+        $key = $player->getRawUniqueId();
+        unset($this->sendAuthMessageTime[$key]);
     }
 
     /**
@@ -198,49 +207,6 @@ class EventListener implements Listener
             // 処理が成功ならイベントをキャンセル
             $event->setCancelled(true);
         }
-    }
-
-    /**
-     * 入力確認処理の管理リストで使うキーを生成
-     * @param Player $player
-     * @return string
-     */
-    private function makeHookKey(Player $player)
-    {
-        return $player->getRawUniqueId();
-    }
-
-    /**
-     * @param Player $player
-     * @param array $args
-     * @return bool
-     */
-    private function dispatchRegisterConfirm(Player $player, array $args, CommandHook $hook) : bool
-    {
-        $this->main->getLogger()->debug("dispatchRegisterConfirm: ");
-
-        $password = array_shift($args) ?? "";
-
-        if ($hook->data !== $password) {
-            $player->sendMessage(TextFormat::RED . "パスワードが違います。もう一度最初から /register <password> と入力してやり直してください。");
-            return false;
-        }
-
-        $this->main->register($player, $password);
-
-        return true;
-    }
-
-    /**
-     * @param Player $player
-     * @param array $args
-     * @return bool
-     */
-    private function dispatchChangePasswordConfirm(Player $player, array $args) : bool
-    {
-        $this->main->getLogger()->debug("dispatchChangePasswordConfirm: ");
-
-        return true;
     }
 
     /**
@@ -284,12 +250,16 @@ class EventListener implements Listener
         // プレイヤーを取得
         $player = $event->getPlayer();
 
-        // 認証済みではない場合
-        if (!$this->main->isAuthenticated($player)) {
-            // イベントをキャンセル
-            $event->setCancelled(true);
-            $event->getPlayer()->onGround = true;
+        // 認証済みの場合
+        if ($this->main->isAuthenticated($player)) {
+            // 何もしないでリターン
+            return;
         }
+
+        // イベントをキャンセル
+        $event->setCancelled(true);
+        $event->getPlayer()->onGround = true;
+        $this->sendAuthMessage($player);
     }
 
     /**
@@ -304,11 +274,15 @@ class EventListener implements Listener
         // プレイヤーを取得
         $player = $event->getPlayer();
 
-        // 認証済みではない場合
-        if (!$this->main->isAuthenticated($player)) {
-            // イベントをキャンセル
-            $event->setCancelled(true);
+        // 認証済みの場合
+        if ($this->main->isAuthenticated($player)) {
+            // 何もしないでリターン
+            return;
         }
+
+        // イベントをキャンセル
+        $event->setCancelled(true);
+        $this->sendAuthMessage($player);
     }
 
     /**
@@ -323,11 +297,15 @@ class EventListener implements Listener
         // プレイヤーを取得
         $player = $event->getPlayer();
 
-        // 認証済みではない場合
-        if (!$this->main->isAuthenticated($player)) {
-            // イベントをキャンセル
-            $event->setCancelled(true);
+        // 認証済みの場合
+        if ($this->main->isAuthenticated($player)) {
+            // 何もしないでリターン
+            return;
         }
+
+        // イベントをキャンセル
+        $event->setCancelled(true);
+        $this->sendAuthMessage($player);
     }
 
     /**
@@ -342,11 +320,15 @@ class EventListener implements Listener
         // プレイヤーを取得
         $player = $event->getPlayer();
 
-        // 認証済みではない場合
-        if (!$this->main->isAuthenticated($player)) {
-            // イベントをキャンセル
-            $event->setCancelled(true);
+        // 認証済みの場合
+        if ($this->main->isAuthenticated($player)) {
+            // 何もしないでリターン
+            return;
         }
+
+        // イベントをキャンセル
+        $event->setCancelled(true);
+        $this->sendAuthMessage($player);
     }
 
     /**
@@ -362,11 +344,16 @@ class EventListener implements Listener
 
         // エンティティが Playerクラスで
         if ($entity instanceof Player) {
-            // 認証済みでなければ
-            if (!$this->main->isAuthenticated($entity)) {
-                // イベントをキャンセル
-                $event->setCancelled(true);
+            // 認証済みの場合
+            if ($this->main->isAuthenticated($player)) {
+                // 何もしないでリターン
+                return;
             }
+
+            // イベントをキャンセル
+            $event->setCancelled(true);
+            $this->sendAuthMessage($player);
+            return;
         }
     }
 
@@ -382,9 +369,16 @@ class EventListener implements Listener
         $player = $event->getPlayer();
 
         if ($player instanceof Player) {
-            if (!$this->main->isAuthenticated($player)) {
-                $event->setCancelled(true);
+            // 認証済みの場合
+            if ($this->main->isAuthenticated($player)) {
+                // 何もしないでリターン
+                return;
             }
+
+            // イベントをキャンセル
+            $event->setCancelled(true);
+            $this->sendAuthMessage($player);
+            return;
         }
     }
 
@@ -400,9 +394,16 @@ class EventListener implements Listener
         $player = $event->getPlayer();
 
         if ($player instanceof Player) {
-            if (!$this->main->isAuthenticated($player)) {
-                $event->setCancelled(true);
+            // 認証済みの場合
+            if ($this->main->isAuthenticated($player)) {
+                // 何もしないでリターン
+                return;
             }
+
+            // イベントをキャンセル
+            $event->setCancelled(true);
+            $this->sendAuthMessage($player);
+            return;
         }
     }
 
@@ -418,9 +419,16 @@ class EventListener implements Listener
         $player = $event->getPlayer();
 
         if ($player instanceof Player) {
-            if (!$this->main->isAuthenticated($player)) {
-                $event->setCancelled(true);
+            // 認証済みの場合
+            if ($this->main->isAuthenticated($player)) {
+                // 何もしないでリターン
+                return;
             }
+
+            // イベントをキャンセル
+            $event->setCancelled(true);
+            $this->sendAuthMessage($player);
+            return;
         }
     }
 
@@ -436,34 +444,17 @@ class EventListener implements Listener
         $player = $event->getInventory()->getHolder();
 
         if ($player instanceof Player) {
-            if (!$this->main->isAuthenticated($player)) {
-                $event->setCancelled(true);
+            // 認証済みの場合
+            if ($this->main->isAuthenticated($player)) {
+                // 何もしないでリターン
+                return;
             }
+
+            // イベントをキャンセル
+            $event->setCancelled(true);
         }
     }
 
-    /**
-     * @param Player $player
-     * @param array $args
-     * @return bool
-     */
-    private function dispatchAuth(Player $player, array $args) : bool
-    {
-        $this->main->getLogger()->debug("dispatchSubCommand: ");
-
-        if ($this->dispatch($player, $args)) {
-            return true;
-        }
-
-        $this->main->sendHelp($player);
-        return false;
-    }
-
-    /**
-     * @param Player $player
-     * @param array $args
-     * @return bool
-     */
     private function dispatchRegister(Player $player, array $args) : bool
     {
         $this->main->getLogger()->debug("dispatchRegister: ");
@@ -474,10 +465,48 @@ class EventListener implements Listener
             return false;
         }
 
-        $key = $this->makeHookKey($player);
-        $this->registerConfirmList[$key] = $password;
-        $player->sendMessage("確認のためもう一度同じパスワードを入力してください");
+        $player->sendMessage(TextFormat::GREEN . $this->main->getMessage()->registerConfirm());
 
+        $this->commandHookQueue->enqueue([$this, "dispatchRegisterConfirm"], $player, $password);
+
+        return true;
+    }
+
+    private function dispatchRegisterConfirm(Player $player, array $args, CommandHook $hook) : bool
+    {
+        $this->main->getLogger()->debug("dispatchRegisterConfirm: ");
+
+        $password = array_shift($args) ?? "";
+
+        if ($hook->data !== $password) {
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage()->registerConfirmError());
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage()->registerUsage());
+            return false;
+        }
+
+        $this->main->register($player, $password);
+
+        return true;
+    }
+
+
+    /**
+     * @param Player $player
+     * @param array $args
+     * @return bool
+     */
+    private function dispatchUnregister(Player $player, array $args) : bool
+    {
+        $this->main->getLogger()->debug("dispatchUnregister: ");
+
+        $password = array_shift($args) ?? "";
+        $this->main->unregister($player, $password);
+
+        return true;
+    }
+
+    private function dispatchUnregisterConfirm(Player $player, array $args) : bool
+    {
         return true;
     }
 
@@ -496,20 +525,6 @@ class EventListener implements Listener
         return true;
     }
 
-    /**
-     * @param Player $player
-     * @param array $args
-     * @return bool
-     */
-    private function dispatchUnregister(Player $player, array $args) : bool
-    {
-        $this->main->getLogger()->debug("dispatchUnregister: ");
-
-        $password = array_shift($args) ?? "";
-        $this->main->unregister($player, $password);
-
-        return true;
-    }
 
     /**
      * @param Player $player
@@ -531,5 +546,37 @@ class EventListener implements Listener
         $player->sendMessage("確認のためもう一度パスワードを入力してください");
 
         return true;
+    }
+
+    private function dispatchChangePasswordConfirm(Player $player, array $args) : bool
+    {
+        return true;
+    }
+
+    private function sendAuthMessage(Player $player)
+    {
+        $key = $player->getRawUniqueId();
+        $now = new \DateTime();
+
+        if (array_key_exists($key, $this->sendAuthMessageTime)) {
+            $lastTime = $this->sendAuthMessageTime[$key];
+            $interval = $now->diff($lastTime);
+
+            if ($interval->s <= self::SHOW_MESSAGE_INTERVAL_SECONDS) {
+                return;
+            }
+        }
+
+        $this->sendAuthMessageTime[$key] = $now;
+
+        if ($this->main->isRegistered($player)) {
+            // ログインしてもらう
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage()->login());
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage()->loginUsage());
+        } else {
+            // 未登録ならアカウント登録してもらう
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage()->register());
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage()->registerUsage());
+        }
     }
 }

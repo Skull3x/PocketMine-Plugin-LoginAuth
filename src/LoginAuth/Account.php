@@ -7,6 +7,7 @@ class Account
 {
     /**
      * コンストラクタ
+     * 
      * @param bool $isNull
      */
     public function __construct(bool $isNull = false)

@@ -11,10 +11,12 @@ commands:
   register:
     description: "アカウント登録(LoginAuth)"
     usage: "/register <password>"
+  unregister:
+    description: "アカウント削除(LoginAuth)"
+    usage: "/unregister <password>"
   login:
     description: "ログイン(LoginAuth)"
     usage: "/login <password>"
-  auth:
-    description: "アカウント管理(LoginAuth)"
-    usage: "/auth < password | unregister >"
-
+  password:
+    description: "パスワード変更(loginAuth)"
+    usage: "/password <newPassword>"
