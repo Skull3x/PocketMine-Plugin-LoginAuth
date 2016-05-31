@@ -10,6 +10,7 @@ use pocketmine\plugin\PluginBase;
 use pocketmine\utils\TextFormat;
 
 require_once("Account.php");
+require_once("SecurityStampManager.php");
 
 class Main extends PluginBase
 {
@@ -22,8 +23,11 @@ class Main extends PluginBase
     // タスク
     private $task;
 
-    // セキュリティスタンプのキャッシ
-    private $securityStampCacheList = [];
+    // メッセージリソース
+    private $messageResource;
+
+    // セキュリティスタンプ
+    private $securityStampManager;
 
     // データベース初期化SQL
     private $ddl = <<<_SQL_
@@ -50,8 +54,12 @@ _SQL_;
         // 設定をロード
         $this->reloadConfig();
 
+        $this->messageResource = new MessageResource($this);
+
         // データベースに接続
         $this->openDatabase();
+
+        $this->securityStampManager = new SecurityStampManager();
 
         // プラグインマネージャーに登録してイベントを受信
         $this->listener = new EventListener($this);
@@ -98,15 +106,14 @@ _SQL_;
         $this->task = null;
     }
 
-    /**
-     * @param CommandSender $sender
-     * @param Command $command
-     * @param string $label
-     * @param array $args
-     */
     public function onCommand(CommandSender $sender, Command $command, $label, array $args)
     {
         $this->getLogger()->debug("onCommand: ");
+    }
+
+    public function getMessage() : MessageResource
+    {
+        return $this->messageResource;
     }
 
     /**
@@ -178,13 +185,12 @@ _SQL_;
     {
         // 認証済みなら
         if ($this->isAuthenticated($player)) {
-            $player->sendMessage(TextFormat::GREEN . "既にログイン認証済みです");
-            // リターン
+            $player->sendMessage(TextFormat::GREEN . $this->getMessage()->alreadyLogin());
             return false;
         }
 
         // パスワード検証
-        if (!$this->validatePassword($player, $password, "パスワードを入力してください。/register <password>")) {
+        if (!$this->validatePassword($player, $password, $this->getMessage()->getPasswordRequired())) {
             // 失敗ならリターン
             return false;
         }
@@ -212,10 +218,10 @@ _SQL_;
             // 名前一覧をカンマで連結
             $nameListStr = $name = implode(",", $nameList);
 
-            $player->sendMessage(TextFormat::RED . "１つの端末で登録可能なアカウント数の上限は" . $accountSlot . "です。この端末では登録上限に達しているため、もうこれ以上アカウントを登録することはできません。");
-            $player->sendMessage(TextFormat::RED . "この端末で登録されていアカウントの一覧は次の通りです。名前を変更してログインしなおしてください。" . $nameListStr);
+            $player->sendMessage(TextFormat::RED . $this->getMessage()->accountSlotOver1($accountSlot));
+            $player->sendMessage(TextFormat::RED . $this->getMessage()->accountSlotOlver2());
+            $player->sendMessage(TextFormat::RED . $nameListStr);
 
-            // リターン
             return false;
         }
 
@@ -227,8 +233,7 @@ _SQL_;
 
         // データベースに同じ名前のアカウントが既に存在する場合
         if (!$account->isNull) {
-            $player->sendMessage(TextFormat::RED . "名前 " . $player->getName() . "は既に登録されています。別の名前に変更してください");
-            // リターン
+            $player->sendMessage(TextFormat::RED . $this->getMessage()->alreadyExistsName($player->getName()));
             return false;
         }
 
@@ -242,13 +247,12 @@ _SQL_;
         $stmt->bindValue(":securityStamp", $this->makeSecurityStamp($player), \PDO::PARAM_STR);
         $stmt->execute();
 
-        // キャッシュに登録
-        $this->addCache($player);
+        $this->securityStampManager->add($player);
 
         // メッセージ表示タスクからプレイヤーを削除
         $this->getTask()->removePlayer($player);
 
-        $player->sendMessage(TextFormat::GREEN . "アカウント登録しました");
+        $player->sendMessage(TextFormat::GREEN . $this->getMessage()->registerSuccessful());
 
         return true;
     }
@@ -260,19 +264,9 @@ _SQL_;
      */
     public function isAuthenticated(Player $player) :bool
     {
-        // セキュリティスタンプを生成
-        $securityStamp = $this->makeSecurityStamp($player);
-
-        // キーを生成
-        $key = $this->makeCacheKey($player);
-
-        // キャッシュにキーが存在するなら
-        if (array_key_exists($key, $this->securityStampCacheList)) {
-            // キャッシュのセキュリティスタンプと比較して同じなら
-            if ($this->securityStampCacheList[$key] === $securityStamp) {
-                // 認証済みを示す true を返す
-                return true;
-            }
+        if ($this->securityStampManager->validate($player)) {
+            // 認証済みを示す true を返す
+            return true;
         }
 
         // 名前をもとにアカウントをデータベースから検索
@@ -281,9 +275,8 @@ _SQL_;
         // アカウントがアカウントが存在する
         if (!$account->isNull) {
             // セキュリティスタンプを比較して同じなら
-            if ($account->securityStamp === $securityStamp) {
-                // キャッシュに登録して
-                $this->addCache($player);
+            if ($account->securityStamp === $this->securityStampManager->makeStamp($player)) {
+                $this->securityStampManager->add($player);
 
                 // 認証済みを示す true を返す
                 return true;
@@ -292,52 +285,6 @@ _SQL_;
 
         // 未認証を示す false を返す
         return false;
-    }
-
-    /**
-     * セキュリティスタンプを作成
-     * @param Player $player
-     * @return string
-     */
-    private function makeSecurityStamp(Player $player) : string
-    {
-        // 名前
-        $name = strtolower($player->getName());
-
-        // 端末ID
-        $clientId = $player->getClientId();
-
-        // IPアドレス
-        $ip = $player->getAddress();
-
-        // 連結
-        $seed = $name . $clientId . $ip;
-
-        // ハッシュ
-        return hash("sha256", $seed);
-    }
-
-    /**
-     * キャッシュのキーを生成
-     *
-     * @param Player $player
-     * @return string
-     */
-    private function makeCacheKey(Player $player)
-    {
-        return $player->getRawUniqueId();
-    }
-
-    /**
-     * キャッシュに登録
-     *
-     * @param Player $player
-     */
-    public function addCache(Player $player)
-    {
-        $key = $this->makeCacheKey($player);
-        $securityStamp = $this->makeSecurityStamp($player);
-        $this->securityStampCacheList[$key] = $securityStamp;
     }
 
     /**
@@ -366,13 +313,13 @@ _SQL_;
 
         // パスワードが短い場合
         if ($passwordLength < $passwordLengthMin) {
-            $player->sendMessage(TextFormat::RED . "パスワードは" . $passwordLengthMin . "文字以上にしてください");
+            $player->sendMessage(TextFormat::RED . $this->getMessage()->passwordLengthMin($passwordLengthMin));
             return false;
         }
 
         // パスワードが長い場合
         if ($passwordLength > $passwordLengthMax) {
-            $player->sendMessage(TextFormat::RED . "パスワードは" . $passwordLengthMax . "文字以下にしてください");
+            $player->sendMessage(TextFormat::RED . $this->getMessage()->passwordLengthMax($passwordLengthMax));
             return false;
         }
 
@@ -393,7 +340,7 @@ _SQL_;
         $stmt->bindValue(":clientId", $clientId, \PDO::PARAM_STR);
         $stmt->execute();
 
-        // データベースからクラスとして取得
+        // データベースからクラスの配列として取得
         $results = $stmt->fetchAll(\PDO::FETCH_CLASS, "LoginAuth\\Account");
 
         return $results;
@@ -419,6 +366,7 @@ _SQL_;
 
     /**
      * アカウントを削除する
+     *
      * @param Player $player
      * @param string $password
      * @return bool
@@ -428,14 +376,14 @@ _SQL_;
         $account = $this->findAccountByName($player);
 
         if ($account->isNull) {
-            $player->sendMessage("アカウントが見つかりません");
+            $player->sendMessage(TextFormat::RED . $this->getMessage()->unregisterNotFound());
             return false;
         }
 
         $passwordHash = $this->makePasswordHash($password);
 
         if ($account->passwordHash !== $passwordHash) {
-            $player->sendMessage("パスワードが違います。アカウントを削除できませんでした。");
+            $player->sendMessage(TextFormat::RED . $this->getMessage()->unregisterPasswordError());
 
             // 異常終了を示す false を返す
             return false;
@@ -457,17 +405,6 @@ _SQL_;
     }
 
     /**
-     * キャッシュを削除
-     *
-     * @param Player $player
-     */
-    public function removeCache(Player $player)
-    {
-        $key = $this->makeCacheKey($player);
-        unset($this->securityStampCacheList[$key]);
-    }
-
-    /**
      * ログイン
      *
      * @param Player $player
@@ -479,7 +416,9 @@ _SQL_;
         // 空白文字を除去
         $password = trim($password);
 
-        if (!$this->validatePassword($player, $password, "パスワードを入力してください。/login <password>")) {
+        // パスワードを検証
+        if (!$this->validatePassword($player, $password, $this->getMessage()->passwordRequired())) {
+            // 検証失敗ならリターン
             return false;
         }
 
@@ -488,20 +427,23 @@ _SQL_;
 
         // アカウントが不在なら
         if ($account->isNull) {
-            $player->sendMessage(TextFormat::RED . "はじめにアカウント登録してください。/register <password>");
+            // メッセージを表示してリターン
+            $player->sendMessage(TextFormat::RED . $this->getMessage()->registerFirst());
             return false;
         }
 
+        // パスワードハッシュを生成
         $passwordHash = $this->makePasswordHash($password);
 
         // パスワードハッシュを比較
         if ($account->passwordHash != $passwordHash) {
-            $player->sendMessage(TextFormat::RED . "パスワードが違います。");
+            // パスワード不一致メッセージを表示してリターン
+            $player->sendMessage(TextFormat::RED . $this->getMessage()->passwordError());
             return false;
         }
 
-        // セキュリティスタンプを更新
-        $securityStamp = $this->makeSecurityStamp($player);
+        // データベースのセキュリティスタンプを更新
+        $securityStamp = $this->securityStampManager->makeStamp($player);
         $name = strtolower($player->getName());
 
         $sql = "UPDATE account SET securityStamp = :securityStamp WHERE name = :name";
@@ -510,14 +452,16 @@ _SQL_;
         $stmt->bindValue(":securityStamp", $securityStamp, \PDO::PARAM_STR);
         $stmt->execute();
 
-        // キャッシュに登録
-        $this->addCache($player);
+        // セキュリティスタンプマネージャーに登録
+        $this->securityStampManager->add($player);
 
         // メッセージ表示タスクからプレイヤーを削除
         $this->getTask()->removePlayer($player);
 
-        $player->sendMessage(TextFormat::GREEN . "ログイン認証しました");
+        // ログイン成功メッセージを表示
+        $player->sendMessage(TextFormat::GREEN . $this->getMessage()->loginSuccessful());
 
+        // 正常終了を示す true を返す
         return true;
     }
 
@@ -532,7 +476,7 @@ _SQL_;
     {
         $newPassword = trim($newPassword);
 
-        if (!$this->validatePassword($player, $newPassword, "新しいパスワードを入力してください。/auth password <newPassword>")) {
+        if (!$this->validatePassword($player, $newPassword, $this->getMessage()->passwordChangeRequired())) {
             return false;
         }
 
@@ -544,7 +488,7 @@ _SQL_;
         $stmt->bindValue(":passwordHash", $this->makePasswordHash($newPassword));
         $stmt->execute();
 
-        $player->sendMessage(TextFormat::GREEN . "パスワードを設定しました。");
+        $player->sendMessage(TextFormat::GREEN . $this->getMessage()->passwordChangeSuccessful());
 
         return true;
     }

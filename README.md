@@ -1,10 +1,16 @@
-# PocketMine-Plugin / LoginAuth
+# PocketMine-Plugin / LoginAuth（ログインオース）
+
+ログイン認証を行うプラグインです。
+
+* １つの端末で複数アカウントに対応しています（１端末＝１アカウントに制限することも可能）
+* 別の端末からの重複ログインを禁止できます。
+* 高速に動作します。
 
 # 動作環境
 
-* PocketMine
+* PocketMine（またはGenisysなどの互換サーバー）
 * PHP7 (PHP5では動作しません)
-* PDOモジュール(SQLITE3)
+* PDO(SQLITE3)モジュール
 
 # ダウンロード
 
@@ -16,43 +22,117 @@ pharファイルを pluginsディレクトリ下に配置します。
 
 # PDO(SQLITE)モジュールの導入
 
-既に PDO(SQLITE3)モジュールが導入されている場合は、この手順は不要です。
-
 PDOについてはPHPの公式ドキュメントを参照してください。
-
 http://php.net/manual/ja/pdo.installation.php
 
-Windowsの場合
+既に PDO(SQLITE3)モジュールが導入されている場合は、この手順は不要です。
 
-php_pdo_sqlite.dll が必要です。
+Linux の場合や、Windows でも PHP公式サイトからダウンロードしたPHPを使用している場合は、大抵導入済みのはずです。
 
-PHPが32ビット版の場合は VC14 x86 Thread Safe の ZIP をダウンロードします。
+PocketMine や Genisys のサイトで提供されている　Minecraft PE用にパッケージされた Windows版PHPバイナリは、PDOモジュールが同梱されていないようです。
 
-PHPが64ビット版の場合は VC14 x64 Thread Safe の ZIP をダウンロードします。
-ZIPを展開して php_pdo_sqlite.dll を PocketMine用PHPのディレクトリ(php/bin下)にコピーします。
+PDOモジュールがない場合は、PHP公式サイトからPHPのZIPダウンロードしてください。
 
-下記のような構成します。
+http://windows.php.net/download/
 
+
+* PHPが32ビット版の場合は VC14 x86 Thread Safe の ZIP をダウンロードします。
+* PHPが64ビット版の場合は VC14 x64 Thread Safe の ZIP をダウンロードします。
+
+ZIPを展開したら、そのなかから php_pdo_sqlite.dll を、PocketMine用PHPのディレクトリ(php/bin下)にコピーします。
+
+ファイル構成は下記のようになります。
+```
 Genisys
    +-- bin
-       +-- php
-            +-- php.exe
-            +-- php.ini
-            +-- php_pdo_sqlite.dll
-            
+        +-- php
+             +-- php.exe
+             +-- php.ini
+             +-- php_pdo_sqlite.dll
+
+```
 
 php.ini に下記行を追記します。
 たいていコメントアウトされているので、その場合は先頭のセミコロン(;)を削除します。
 
+```
 extension=php_pdo_sqlite.dll
+```
+
+以上でPDO(SQLITE3)モジュールの導入は完了です。
 
 
 # 設定
 
 PocketMine を起動すると pluginsディレクトリ下に「LoginAuth」ディレクトリが自動的に作成されます。
 
-# 仕様
 
-* １つの端末で複数のプレーヤー名の使い分けができる。
-* 別の端末からの重複ログイン禁止
+# アカウント登録
 
+初めてサーバーに参加したプレイヤーはアカウントを登録する必要があります。
+次のコマンドを実行します。
+passwordの部分には自分で考えたパスワードを入力します。
+
+```
+/register <password>
+```
+
+# ログイン
+
+ログインするには次のコマンドを実行します。
+passwordの部分にはアカウント登録したおきのパスワードを入力します。
+
+```
+/login <password>
+```
+
+
+ログイン認証にはキャッシュ機能を搭載していて、毎回ログインする手間を軽減しています。
+同一端末＆同一IPからのログインの場合は、ログイン認証は省略されます。
+
+
+# パスワード変更
+
+パスワードを変更するには、次のコマンドを実行します。
+
+```
+/auth password <newPassword>
+```
+
+# アカウント削除
+
+１つの端末で登録可能なアカウント数は制限されているので、不要なアカウントを削除することができます。
+アカウントを削除するには、次のコマンドを実行します。
+
+```
+/auth unregister <password>
+```
+
+
+# 端末毎に登録できるアカウント数の設定
+
+この機能は１つの端末を兄弟や家族などで使う場合や、サブアカウントを許容する場合を想定しています。
+
+１つの端末に登録できるアカウント数は config.yml の accountSlot で指定します。
+
+また、１つの端末で１つのアカウントしか登録できないように制限したい場合は 1 を指定します。
+
+config.yml
+```
+accountSlot: 1
+
+```
+
+# パスワードの文字数の設定
+
+パスワードの最小文字数は config.yml の passwordLengthMin に指定します。
+
+```
+passwordLengthMin: 5
+```
+
+パスワードの最大文字数は config.yml の passwordLengthMax に指定します。
+
+```
+passwordLengthMaz: 20
+```

@@ -8,3 +8,4 @@ passwordLengthMax: 20
 
 # １つの端末で作成可能なアカウント数の上限
 accountSlot: 2
+

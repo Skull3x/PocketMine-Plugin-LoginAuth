@@ -24,15 +24,16 @@ class EventListener implements Listener
 {
     private $main;
 
-    private $registerConfirmList = [];
-
-    private $changePasswordConfirmList = [];
+    private $commandHookQueue;
 
     // コマンドテーブル
-    private $commandTable = [
+    private static $commandTable = [
         "register" => "dispatchRegister",
         "login" => "dispatchLogin",
-        "auth" => "dispatchAuth",
+        "auth" => [
+            "unregister" => "dispatchUnregister",
+            "password" => "dispatchChangePassword",
+        ]
     ];
 
     /**
@@ -42,6 +43,7 @@ class EventListener implements Listener
     public function __construct(Main $main)
     {
         $this->main = $main;
+        $this->commandHookQueue = new CommandHookQueue();
     }
 
     /**
@@ -59,6 +61,9 @@ class EventListener implements Listener
     function onLogin(PlayerPreLoginEvent $event)
     {
         $this->main->getLogger()->debug("onLogin: ");
+
+        // プレイヤーを取得
+        $player = $event->getPlayer();
     }
 
     /**
@@ -92,7 +97,7 @@ class EventListener implements Listener
                     $event->setCancelled(true);
 
                     // 拒否する
-                    $player->close("既に別端末からログインしています");
+                    $event->setKickMessage("既に別端末からログインしています。先にログインしている端末からログアウトしてやり直してください。");
                     return;
                 }
             }
@@ -118,6 +123,7 @@ class EventListener implements Listener
         $this->main->getLogger()->debug("onJoin: ");
 
         $player = $event->getPlayer();
+
     }
 
     /**
@@ -129,6 +135,7 @@ class EventListener implements Listener
 
         // プレイヤーを取得
         $player = $event->getPlayer();
+
 
         // 認証済みなら
         if ($this->main->isAuthenticated($player)) {
@@ -169,18 +176,10 @@ class EventListener implements Listener
         // プレイヤーが入力したメッセージを取得
         $message = $event->getMessage();
 
-        $key = $this->makeConfirmKey($player);
+        $hook = $this->commandHookQueue->dequeue($player);
 
-        // アカウント登録のパスワード再入力
-        if (array_key_exists($key, $this->registerConfirmList)) {
-            $this->dispatchRegisterConfirm($player, [$message]);
-            $event->setCancelled(true);
-            return;
-        }
-
-        // パスワード変更のパスワード再入力
-        if (array_key_exists($key, $this->changePasswordConfirmList)) {
-            $this->dispatchChangePasswordConfirm($player, [$message]);
+        if (!$hook->isNull) {
+            call_user_func($hook->callback, $player, explode(" ", $message), $hook);
             $event->setCancelled(true);
             return;
         }
@@ -195,7 +194,7 @@ class EventListener implements Listener
         $args = explode(" ", substr($message, 1));
 
         // コマンドを処理
-        if ($this->dispatch($player, $args)) {
+        if ($this->dispatch(self::$commandTable, $player, $args)) {
             // 処理が成功ならイベントをキャンセル
             $event->setCancelled(true);
         }
@@ -206,7 +205,7 @@ class EventListener implements Listener
      * @param Player $player
      * @return string
      */
-    private function makeConfirmKey(Player $player)
+    private function makeHookKey(Player $player)
     {
         return $player->getRawUniqueId();
     }
@@ -216,27 +215,20 @@ class EventListener implements Listener
      * @param array $args
      * @return bool
      */
-    private function dispatchRegisterConfirm(Player $player, array $args) : bool
+    private function dispatchRegisterConfirm(Player $player, array $args, CommandHook $hook) : bool
     {
         $this->main->getLogger()->debug("dispatchRegisterConfirm: ");
 
         $password = array_shift($args) ?? "";
 
-        $key = $this->makeConfirmKey($player);
-
-        if (array_key_exists($key, $this->registerConfirmList)) {
-            if ($this->registerConfirmList[$key] == $password) {
-                $this->main->register($player, $password);
-                unset($this->registerConfirmList[$key]);
-                return true;
-            } else {
-                $player->sendMessage(TextFormat::RED . "パスワードが違います。もう一度最初から /register <password> と入力してやり直してください。");
-            }
-        } else {
-            $this->main->getLogger()->warning("dispatchRegisterConfirm: アカウント登録のパスワード再入力リストにキーが存在しません");
+        if ($hook->data !== $password) {
+            $player->sendMessage(TextFormat::RED . "パスワードが違います。もう一度最初から /register <password> と入力してやり直してください。");
+            return false;
         }
 
-        return false;
+        $this->main->register($player, $password);
+
+        return true;
     }
 
     /**
@@ -253,22 +245,28 @@ class EventListener implements Listener
 
     /**
      * コマンドを処理する、正常に処理が完了した場合 true を返す
+     *
      * @param Player $player
      * @param array $args
      * @return bool
      */
-    private function dispatch(Player $player, array $args):bool
+    private function dispatch(array $itemList, Player $player, array $args):bool
     {
         // 配列の先頭の文字列を取得して、英小文字に変換
         $command = strtolower(array_shift($args) ?? "");
 
         // キーが存在すれば
-        if (array_key_exists($command, $this->commandTable)) {
-            // 各処理を呼び出し
-            $method = $this->commandTable[$command];
-            $result = call_user_func([$this, $method], $player, $args);
-            var_dump($result);
-            return $result;
+        if (array_key_exists($command, $itemList)) {
+            $item = $itemList[$command];
+
+            // 配列なら
+            if (is_array($item)) {
+                // 再帰呼び出し
+                return $this->dispatch($item, $player, $args);
+            } else {
+                // 各処理を呼び出し
+                return call_user_func([$this, $item], $player, $args);
+            }
         }
 
         return false;
@@ -476,9 +474,9 @@ class EventListener implements Listener
             return false;
         }
 
-        $key = $this->makeConfirmKey($player);
+        $key = $this->makeHookKey($player);
         $this->registerConfirmList[$key] = $password;
-        $player->sendMessage("念のためもう一度同じパスワードを入力してください");
+        $player->sendMessage("確認のためもう一度同じパスワードを入力してください");
 
         return true;
     }
@@ -521,6 +519,16 @@ class EventListener implements Listener
     private function dispatchChangePassword(Player $player, array $args) : bool
     {
         $this->main->getLogger()->debug("dispatchChangePassword: ");
+
+        $password = array_shift($args) ?? "";
+
+        if (!$this->main->validatePassword($player, $password, "新しいパスワードを入力してください")) {
+            return false;
+        }
+
+        $key = $this->makeHookKey($player);
+        $this->changePasswordConfirmList[$key] = $password;
+        $player->sendMessage("確認のためもう一度パスワードを入力してください");
 
         return true;
     }

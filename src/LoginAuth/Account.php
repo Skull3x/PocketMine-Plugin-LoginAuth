@@ -24,13 +24,4 @@ class Account
 
     // オブジェクトが無効（データベースに存在しない）なら true
 
-    /**
-     * コンストラクタ
-     *
-     * @param bool $isNull
-     */
-    function __construct(bool $isNull = false)
-    {
-        $this->isNull = $isNull;
-    }
 }
