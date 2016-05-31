@@ -5,23 +5,29 @@ namespace LoginAuth;
 
 class Account
 {
-    public $name;
+    /**
+     * コンストラクタ
+     * @param bool $isNull
+     */
+    public function __construct(bool $isNull = false)
+    {
+        $this->isNull = $isNull;
+    }
 
     // 名前
-    public $clientId;
+    public $name;
 
     // 端末ID
-    public $ip;
+    public $clientId;
 
     // IPアドレス
-    public $passwordHash;
+    public $ip;
 
     // パスワードハッシュ
-    public $securityStamp;
+    public $passwordHash;
 
     // セキュリティスタンプ
+    public $securityStamp;
+
     public $isNull;
-
-    // オブジェクトが無効（データベースに存在しない）なら true
-
 }

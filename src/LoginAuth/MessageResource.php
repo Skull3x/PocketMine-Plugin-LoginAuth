@@ -138,5 +138,9 @@ class MessageResource
         return $this->get("unregisterPasswordRequired");
     }
 
+    public function login() : string
+    {
+        return $this->get("login");
+    }
 
 }

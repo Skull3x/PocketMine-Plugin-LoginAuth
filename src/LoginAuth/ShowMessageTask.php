@@ -56,12 +56,10 @@ class ShowMessageTask extends PluginTask
             // 登録済みなら
             if ($this->main->isRegistered($player)) {
                 // ログインしてもらう
-                $player->sendMessage(TextFormat::RED . "ログイン認証してください");
-                $player->sendMessage(TextFormat::RED . "/login <password>");
+                $player->sendMessage(TextFormat::RED . $this->main->getMessage()->login());
             } else {
                 // 未登録ならアカウント登録してもらう
-                $player->sendMessage(TextFormat::RED . "このサーバーではアカウント登録が必要です");
-                $player->sendMessage(TextFormat::RED . "/register <password>");
+                $player->sendMessage(TextFormat::RED . $this->main->getMessage()->registerFirst());
             }
         }
     }

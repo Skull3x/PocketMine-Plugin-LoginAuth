@@ -54,12 +54,14 @@ _SQL_;
         // 設定をロード
         $this->reloadConfig();
 
+        // メッセージリソースを初期化
         $this->messageResource = new MessageResource($this);
+
+        // セキュリティスタンプマネージャーを初期化
+        $this->securityStampManager = new SecurityStampManager();
 
         // データベースに接続
         $this->openDatabase();
-
-        $this->securityStampManager = new SecurityStampManager();
 
         // プラグインマネージャーに登録してイベントを受信
         $this->listener = new EventListener($this);
@@ -137,7 +139,7 @@ _SQL_;
      */
     private function findAccountByName(string $name) : Account
     {
-        $sql = "SELECT * FROM account WHERE name = :name";
+        $sql = "SELECT * FROM account WHERE name = :name ORDER BY name";
         $stmt = $this->preparedStatement($sql);
         $stmt->bindValue(":name", strtolower($name), \PDO::PARAM_STR);
         $stmt->execute();
