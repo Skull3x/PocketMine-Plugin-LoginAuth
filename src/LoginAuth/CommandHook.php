@@ -14,10 +14,13 @@ class CommandHook
         $this->isNull = $isNull;
     }
 
+    // プレイヤー
     public $player;
 
+    // コールバック
     public $callback;
 
+    // データ
     public $data;
 
     public $isNull;
