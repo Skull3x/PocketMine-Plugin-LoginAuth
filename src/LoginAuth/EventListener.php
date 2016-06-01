@@ -87,7 +87,7 @@ class EventListener implements Listener
                     $event->setCancelled(true);
 
                     // 拒否する
-                    $event->setKickMessage("既に別端末からログインしています。先にログインしている端末からログアウトしてやり直してください。");
+                    $event->setKickMessage($this->main->getMessage("alreadyLoginOtherDevice"));
                     return;
                 }
             }

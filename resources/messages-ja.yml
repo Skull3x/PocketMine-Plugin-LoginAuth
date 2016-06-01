@@ -2,6 +2,7 @@
 alreadyLogin: ログイン認証済みです
 alreadyExistsName: 名前{name}は既に登録されています。別の名前に変更してください
 alreadyExistsNameDeleted: 名前{name}は過去に登録されていました。別の名前に変更してください
+alreadyLoginOtherDevice: 重複ログインはできません。先にログインしている端末からログアウトしてやり直してください
 
 register: はじめにアカウント登録してください
 registerUsage: /register <password>
