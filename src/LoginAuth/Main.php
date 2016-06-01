@@ -85,7 +85,7 @@ _SQL_;
      */
     private function loadMessageResource(string $locale)
     {
-        // 引数をもとにファイルのパスを組み立て
+        // 言語の指定をもとにファイルのパスを組み立て
         $file = "messages-" . $locale . ".yml";
         $path = $this->getDataFolder() . $file;
 
@@ -106,13 +106,16 @@ _SQL_;
     /**
      * メッセージを取得
      *
+     * メッセージの文字列中にプレースフォルダ（波括弧）を置換する場合は、引数 args に連想配列を渡す
+     *
      * @param string $key
      * @param array|NULL $args
      * @return string
      */
     public function getMessage(string $key, array $args = NULL) : string
     {
-        $message = $this->messageResource->get($key);
+        /** @noinspection PhpUndefinedMethodInspection */
+        $message = $this->messageResource->get($key) ?? "";
 
         if (is_array($args)) {
             foreach ($args as $key => $value) {
@@ -150,13 +153,57 @@ _SQL_;
         }
     }
 
+    /**
+     * セキュリティスタンプマネージャーを取得
+     *
+     * @return SecurityStampManager
+     */
     public function getSecurityStampManager() : SecurityStampManager
     {
         return $this->securityStampManager;
     }
 
     /**
-     * アカウントを登録する
+     * アカウント登録が可能か検証する（データベースへの登録は行わない）
+     *
+     * @param Player $player
+     * @param string $password
+     * @return bool
+     */
+    public function tryRegister(Player $player, string $password) : bool
+    {
+        // 既にログイン認証済みなら
+        if ($this->isAuthenticated($player)) {
+            $player->sendMessage(TextFormat::RED . $this->getMessage("registerAlready"));
+            return false;
+        }
+
+        $account = $this->findAccountByName($player->getName());
+
+        // データベースに同じ名前のアカウントが既に存在する場合
+        if (!$account->isNull) {
+            // 削除フラグが立っていれば
+            if ($account->isDeleted) {
+                // 過去に登録されていたとメッセージを表示
+                $player->sendMessage(TextFormat::RED . $this->getMessage("alreadyExistsNameDeleted", ["name" => $player->getName()]));
+            } else {
+                // 登録されているとメッセージを表示
+                $player->sendMessage(TextFormat::RED . $this->getMessage("alreadyExistsName", ["name" => $player->getName()]));
+            }
+
+            return false;
+        }
+
+        // パスワードを検証
+        if (!$this->validatePassword($player, $password, $this->getMessage("passwordRequired"))) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * アカウントをデータベースに登録する
      *
      * @param Player $player
      * @param string $password
@@ -237,7 +284,7 @@ _SQL_;
     }
 
     /**
-     * ログイン
+     * ログインする
      *
      * @param Player $player
      * @param string $password
@@ -328,7 +375,7 @@ _SQL_;
      */
     public function findAccountByName(string $name) : Account
     {
-        $sql = "SELECT * FROM account WHERE name = :name ORDER BY name";
+        $sql = "SELECT * FROM account WHERE name = :name";
         $stmt = $this->preparedStatement($sql);
         $stmt->bindValue(":name", strtolower($name), \PDO::PARAM_STR);
         $stmt->execute();
@@ -348,6 +395,7 @@ _SQL_;
 
     /**
      * SQLプリペアドステートメント
+     *
      * @param string $sql
      * @return \PDOStatement
      */
@@ -360,8 +408,7 @@ _SQL_;
      * データベースを取得
      * @return \PDO
      */
-    private
-    function getDatabase() : \PDO
+    private function getDatabase() : \PDO
     {
         return $this->pdo;
     }
@@ -369,11 +416,13 @@ _SQL_;
 
     /**
      * 認証済みなら true を返す
+     *
      * @param Player $player
      * @return bool
      */
     public function isAuthenticated(Player $player) :bool
     {
+        // キャッシュを検証
         if ($this->getSecurityStampManager()->validate($player)) {
             // 認証済みを示す true を返す
             return true;
@@ -382,21 +431,22 @@ _SQL_;
         // 名前をもとにアカウントをデータベースから検索
         $account = $this->findAccountByName(strtolower($player->getName()));
 
-        // アカウントがアカウントが存在する
+        // アカウントがアカウントが存在しない
         if ($account->isNull) {
             return false;
         }
 
-        // 削除フラグが立っていたら
+        // 削除フラグが立っている
         if ($account->isDeleted) {
             return false;
         }
 
-        // セキュリティスタンプを比較して同じなら
+        // データベースのセキュリティスタンプと比較して違っている
         if ($account->securityStamp !== $this->getSecurityStampManager()->makeStamp($player)) {
             return false;
         }
 
+        // キャッシュに登録
         $this->getSecurityStampManager()->add($player);
         return true;
     }
@@ -411,6 +461,7 @@ _SQL_;
      */
     public function validatePassword(Player $player, string $password, string $emptyErrorMessage) : bool
     {
+        // パスワードが空欄の場合
         if ($password === "") {
             $player->sendMessage(TextFormat::RED . $emptyErrorMessage);
             return false;
@@ -471,7 +522,39 @@ _SQL_;
     }
 
     /**
+     * アカウント削除が可能か検証する（データベースへの反映は行わない）
+     *
+     * @param Player $player
+     * @param string $password
+     * @return bool
+     */
+    public function tryUnregister(Player $player, string $password) : bool
+    {
+        if (!$this->validatePassword($player, $password, $this->getMessage("unregisterPasswordRequired"))) {
+            return false;
+        }
+
+        $account = $this->findAccountByName($player->getName());
+
+        if ($account->isNull) {
+            $this->getLogger()->warning("dispatchUnregister: " . $player->getName() . "のアカウントが存在しない");
+            return false;
+        }
+
+        if ($account->passwordHash !== $this->makePasswordHash($password)) {
+            $player->sendMessage(TextFormat::RED . $this->getMessage("unregisterPasswordError"));
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * アカウントを削除する
+     *
+     * 同じ名前を再利用できないようにするため、
+     * 実際にはデータベースからレコードを物理削除するのではなく、
+     * isDeleted　カラムを 1 にすることで論理削除として扱う。
      *
      * @param Player $player
      * @param string $password
@@ -479,6 +562,7 @@ _SQL_;
      */
     public function unregister(Player $player, string $password) :bool
     {
+        // パスワードが空欄の場合
         if ($password === "") {
             $player->sendMessage(TextFormat::RED . $this->getMessage("unregisterPasswordRequired"));
             return false;
@@ -486,6 +570,7 @@ _SQL_;
 
         $account = $this->findAccountByName($player->getName());
 
+        // アカウントが不在の場合
         if ($account->isNull) {
             $player->sendMessage(TextFormat::RED . $this->getMessage("unregisterNotFound"));
             return false;
@@ -493,6 +578,7 @@ _SQL_;
 
         $passwordHash = $this->makePasswordHash($password);
 
+        // パスワードが違う場合
         if ($account->passwordHash !== $passwordHash) {
             $player->sendMessage(TextFormat::RED . $this->getMessage("unregisterPasswordError"));
             return false;
@@ -509,6 +595,24 @@ _SQL_;
 
         // プレイヤーを強制ログアウト
         $player->close("", $this->getMessage("unregisterSuccessful"));
+
+        return true;
+    }
+
+    /**
+     * パスワード変更が可能か検証する
+     *
+     * データベースへの反映は行わない
+     *
+     * @param Player $player
+     * @param string $newPassword
+     * @return bool
+     */
+    public function tryChangePassword(Player $player, string $newPassword) : bool
+    {
+        if (!$this->validatePassword($player, $newPassword, $this->getMessage("passwordRequired"))) {
+            return false;
+        }
 
         return true;
     }

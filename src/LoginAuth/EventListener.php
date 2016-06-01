@@ -28,13 +28,17 @@ class EventListener implements Listener
     // メッセージ表示間隔を秒単位で指定
     const SHOW_MESSAGE_INTERVAL_SECONDS = 5;
 
+    // メイン
     private $main;
 
+    // コマンドフックキュー
     private $commandHookQueue;
 
+    // メッセージを一定時間経過後に表示するための管理リスト
     private $sendAuthMessageTime = [];
 
     // コマンドテーブル
+    // キーにコマンドの文字列を、バリューにメソッド名を記述
     private static $commandTable = [
         "register" => "dispatchRegister",
         "unregister" => "dispatchUnregister",
@@ -50,26 +54,6 @@ class EventListener implements Listener
     {
         $this->main = $main;
         $this->commandHookQueue = new CommandHookQueue();
-    }
-
-    /**
-     * プレイヤーがログインするときのイベント発生順序
-     *
-     * onLogin
-     * onPlayerPreLogin
-     * onPlayerRespawn
-     * onJoin
-     * onPlayerJoin
-     *
-     * @param PlayerPreLoginEvent $event
-     */
-
-    function onLogin(PlayerPreLoginEvent $event)
-    {
-        $this->main->getLogger()->debug("onLogin: ");
-
-        // プレイヤーを取得
-        $player = $event->getPlayer();
     }
 
     /**
@@ -124,17 +108,6 @@ class EventListener implements Listener
     /**
      * @param PlayerJoinEvent $event
      */
-    public function onJoin(PlayerJoinEvent $event)
-    {
-        $this->main->getLogger()->debug("onJoin: ");
-
-        $player = $event->getPlayer();
-
-    }
-
-    /**
-     * @param PlayerJoinEvent $event
-     */
     public function onPlayerJoin(PlayerJoinEvent $event)
     {
         $this->main->getLogger()->debug("onPlayerJoin: ");
@@ -147,7 +120,7 @@ class EventListener implements Listener
             // ログイン認証済みメッセージ表示
             $player->sendMessage(TextFormat::GREEN . $this->main->getMessage("alreadyLogin"));
         } else {
-            $this->sendAuthMessage($player);
+            $this->sendAuthMessage($player, true);
         }
     }
 
@@ -453,23 +426,12 @@ class EventListener implements Listener
     {
         $this->main->getLogger()->debug("dispatchRegister: ");
 
-        $account = $this->main->findAccountByName($player->getName());
-
-        // データベースに同じ名前のアカウントが既に存在する場合
-        if (!$account->isNull) {
-            $player->sendMessage(TextFormat::RED . $this->main->getMessage("alreadyExistsName", ["name" => $player->getName()]));
-            return;
-        }
-
         $password = array_shift($args) ?? "";
 
-        if (!$this->main->validatePassword($player, $password, $this->main->getMessage("passwordRequired"))) {
-            return;
+        if ($this->main->tryRegister($player, $password)) {
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage("registerConfirm"));
+            $this->commandHookQueue->enqueue([$this, "dispatchRegisterConfirm"], $player, $password);
         }
-
-        $player->sendMessage(TextFormat::RED . $this->main->getMessage("registerConfirm"));
-
-        $this->commandHookQueue->enqueue([$this, "dispatchRegisterConfirm"], $player, $password);
     }
 
     private function dispatchRegisterConfirm(Player $player, array $args, CommandHook $hook)
@@ -499,25 +461,11 @@ class EventListener implements Listener
 
         $password = array_shift($args) ?? "";
 
-        if (!$this->main->validatePassword($player, $password, $this->main->getMessage("unregisterPasswordRequired"))) {
-            return;
+        if ($this->main->tryUnregister($player, $password)) {
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage("unregisterConfirm"));
+            $this->commandHookQueue->enqueue([$this, "dispatchUnregisterConfirm"], $player, $password);
+
         }
-
-        $account = $this->main->findAccountByName($player->getName());
-
-        if ($account->isNull) {
-            $this->main->getLogger()->warning("dispatchUnregister: " . $player->getName() . "のアカウントが存在しない");
-            return;
-        }
-
-        if ($account->passwordHash !== $this->main->makePasswordHash($password)) {
-            $player->sendMessage(TextFormat::RED . $this->main->getMessage("unregisterPasswordError"));
-            return;
-        }
-
-        $player->sendMessage(TextFormat::RED . $this->main->getMessage("unregisterConfirm"));
-
-        $this->commandHookQueue->enqueue([$this, "dispatchUnregisterConfirm"], $player, $password);
     }
 
     private function dispatchUnregisterConfirm(Player $player, array $args, CommandHook $hook)
@@ -555,43 +503,70 @@ class EventListener implements Listener
     {
         $this->main->getLogger()->debug("dispatchChangePassword: ");
 
-        $password = array_shift($args) ?? "";
+        $newPassword = array_shift($args) ?? "";
 
-        if (!$this->main->validatePassword($player, $password, $this->main->getMessage("passwordRequired"))) {
-            return;
+        if ($this->main->tryChangePassword($player, $newPassword)) {
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage("passwordConfirm"));
+            $this->commandHookQueue->enqueue([$this, "dispatchChangePasswordConfirm"], $player, $newPassword);
         }
-
-        $player->sendMessage(TextFormat::RED . $this->main->getMessage("passwordConfirm"));
-        $this->commandHookQueue->enqueue([$this, "dispatchChangePasswordConfirm"], $player, $password);
     }
 
     private function dispatchChangePasswordConfirm(Player $player, array $args, CommandHook $hook)
     {
         $this->main->getLogger()->debug("dispatchChangePasswordConfirm: ");
+
+        $newPassword = array_shift($args) ?? "";
+
+        if ($newPassword !== $hook->data) {
+            $player->sendMessage(TextFormat::RED . $this->main->getMessage("passwordError"));
+            return;
+        }
+
+        $this->main->changePassword($player, $newPassword);
     }
 
-    private function sendAuthMessage(Player $player)
+    /**
+     * @param Player $player
+     * @param bool $force
+     */
+    private function sendAuthMessage(Player $player, bool $force = false)
     {
+        // キーを生成
         $key = $player->getRawUniqueId();
+
+        // 現在日時を取得
         $now = new \DateTime();
 
+        // 強制フラグが立っている場合
+        if ($force) {
+            unset($this->sendAuthMessageTime[$key]);
+        }
+
+        // キーが存在する場合
         if (array_key_exists($key, $this->sendAuthMessageTime)) {
+            // 最終表示時刻を取得
             $lastTime = $this->sendAuthMessageTime[$key];
+
+            // 時間の差分を取得
             $interval = $now->diff($lastTime);
 
+            // 時差が指定値以下なら
             if ($interval->s <= self::SHOW_MESSAGE_INTERVAL_SECONDS) {
+                // リターン
                 return;
             }
         }
 
+        // 最終表示時刻を更新
         $this->sendAuthMessageTime[$key] = $now;
 
+        // アカウント登録状態に応じて表示するメッセージを切り替える
         if ($this->main->isRegistered($player)) {
-            // ログインしてもらう
+            // ログインしてもらうメッセージ
             $player->sendMessage(TextFormat::RED . $this->main->getMessage("login"));
             $player->sendMessage(TextFormat::RED . $this->main->getMessage("loginUsage"));
         } else {
-            // 未登録ならアカウント登録してもらう
+            // 未登録ならアカウント登録してもらうメッセージ
             $player->sendMessage(TextFormat::RED . $this->main->getMessage("register"));
             $player->sendMessage(TextFormat::RED . $this->main->getMessage("registerUsage"));
         }
