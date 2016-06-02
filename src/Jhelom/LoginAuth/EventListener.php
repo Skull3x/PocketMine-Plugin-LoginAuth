@@ -106,7 +106,7 @@ class EventListener implements Listener
         $player = $event->getPlayer();
 
         // コマンドフックをクリア
-        $this->commandHookQueue->clear($player);
+        $this->main->getInvoker()->getHookQueue()->clear($player);
 
         // メッセージスロットリングをクリア
         MessageThrottling::clear($player);

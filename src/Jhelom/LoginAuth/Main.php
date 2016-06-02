@@ -37,10 +37,17 @@ CREATE TABLE [account] (
 [clientId] TEXT NOT NULL,
 [ip] TEXT NOT NULL,
 [passwordHash] TEXT NOT NULL,
-[securityStamp] TEXT NOT NULL
+[securityStamp] TEXT NOT NULL,
 PRIMARY KEY(name)
 );                
 _SQL_;
+
+    private static $instance;
+
+    public static function getInstance() : Main
+    {
+        return self::$instance;
+    }
 
     /**
      * プラグインが有効化されたときのイベント
@@ -48,6 +55,8 @@ _SQL_;
     public function onEnable()
     {
         $this->getLogger()->info("§a Designed by jhelom & dragon7");
+
+        self::$instance = $this;
 
         // デフォルト設定をセーブ
         $this->saveDefaultConfig();
@@ -89,7 +98,7 @@ _SQL_;
     {
         $this->getLogger()->debug("Main.onCommand: " . $sender->getName() . ": " . $command->getName());
 
-        $this->invoker->invoke($sender, $command, $args);
+        return $this->getInvoker()->invoke($sender, $command, $args);
     }
 
     /*
@@ -106,9 +115,6 @@ _SQL_;
 
         // ファイルが不在なら
         if (!file_exists($path)) {
-            // 警告ログ
-            $this->getLogger()->warning($this->getMessage("messageResourceNotFound", ["file" => $file]));
-
             // 日本語ファイルのパスにする
             $file = "messages-ja.yml";
             $path = $this->getDataFolder() . $file;
@@ -128,7 +134,6 @@ _SQL_;
      */
     public function getMessage(string $key, array $args = NULL) : string
     {
-        /** @noinspection PhpUndefinedMethodInspection */
         $message = $this->messageResource->get($key) ?? "";
 
         // args が配列の場合
@@ -176,11 +181,10 @@ _SQL_;
     /*
      * セキュリティスタンプマネージャーを取得
      */
-    private function getSecurityStampManager() : SecurityStampManager
+    public function getSecurityStampManager() : SecurityStampManager
     {
         return $this->securityStampManager;
     }
-
 
     /*
      * アカウント登録済みなら true を返す
@@ -225,7 +229,7 @@ _SQL_;
      * 端末IDをもとにデータベースからアカウントを検索して、Accountクラスの配列を返す
      * 不在の場合は、空の配列を返す
      */
-    private function findAccountsByClientId(string $clientId) : array
+    public function findAccountsByClientId(string $clientId) : array
     {
         $sql = "SELECT * FROM account WHERE clientId = :clientId AND isDeleted == 0 ORDER BY name";
         $stmt = $this->preparedStatement($sql);
@@ -241,7 +245,7 @@ _SQL_;
     /*
      * SQLプリペアドステートメント
      */
-    private function preparedStatement(string $sql) : \PDOStatement
+    public function preparedStatement(string $sql) : \PDOStatement
     {
         return $this->getDatabase()->prepare($sql);
     }
@@ -339,6 +343,11 @@ _SQL_;
     public function castToPlayer(CommandSender $sender) : Player
     {
         return $sender;
+    }
+
+    public function getInvoker() : CommandInvoker
+    {
+        return $this->invoker;
     }
 }
 

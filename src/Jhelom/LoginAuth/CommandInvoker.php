@@ -43,9 +43,9 @@ class CommandInvoker
 
     public function add(ICommandReceiver $receiver)
     {
-        $name = $receiver->getName();
+        $name = strtolower($receiver->getName());
 
-        if (array_key_exists($name)) {
+        if (array_key_exists($name, $this->list)) {
             Server::getInstance()->getLogger()->warning("Dispatcher.add: キー重複 " . $name);
         }
 
@@ -57,24 +57,27 @@ class CommandInvoker
      */
     public function invoke(CommandSender $sender, Command $command, array $args):bool
     {
-        $commandName = $command->getName();
+        $name = strtolower($command->getName());
 
         // キーが不在の場合
-        if (!array_key_exists($commandName, $this->list)) {
+        if (!array_key_exists($name, $this->list)) {
             return false;
         }
 
-        $receiver = $this->getReceiver($commandName);
+        $receiver = $this->getReceiver($name);
 
+        // sender が Player の場合
         if ($sender instanceof Player) {
+            // playerによる実行が禁止の場合
             if (!$receiver->isAllowPlayer()) {
-                MessageThrottling::send($sender, TextFormat::RED . $this->getMessage("commandAtPlayer"));
-                return false;
+                MessageThrottling::send($sender, TextFormat::RED . $this->getMain()->getMessage("commandAtPlayer"));
+                return true;
             }
         } else {
+            // コンソールによる実行が禁止の場合
             if (!$receiver->isAllowConsole()) {
-                MessageThrottling::send($sender, TextFormat::RED . $this->getMessage("commandAtConsole"));
-                return false;
+                MessageThrottling::send($sender, TextFormat::RED . $this->getMain()->getMessage("commandAtConsole"));
+                return true;
             }
         }
 
@@ -83,9 +86,9 @@ class CommandInvoker
         return true;
     }
 
-    private function getReceiver(string $commandName) : ICommandReceiver
+    private function getReceiver(string $name) : ICommandReceiver
     {
-        return $this->list[$commandName];
+        return $this->list[$name];
     }
 
 }

@@ -12,16 +12,6 @@ use pocketmine\utils\TextFormat;
 
 class LoginCommandReceiver implements ICommandReceiver
 {
-    private $main;
-
-    /*
-     * コンストラクタ
-     */
-    public function __construct(Main $main)
-    {
-        $this->main = $main;
-    }
-
     public function getName() : string
     {
         return "login";
@@ -46,29 +36,23 @@ class LoginCommandReceiver implements ICommandReceiver
     /*
      * ログインする
      */
-    public function login(CommandSender $sender, string $password):bool
+    public function login(CommandInvoker $invoker, CommandSender $sender, string $password):bool
     {
-        // コマンド実行者がプレイヤーでない場合
-        if ($this->isNotPlayer($sender)) {
-            MessageThrottling::send($sender, TextFormat::RED . $this->getMessage("commandAtClient"));
-            return false;
-        }
-
         // Playerクラスにキャスト
-        $player = $this->castToPlayer($sender);
+        $player = Main::getInstance()->castToPlayer($sender);
 
         // 既にログイン認証済みの場合
-        if ($this->isAuthenticated($player)) {
-            MessageThrottling::send($player, TextFormat::RED . $this->getMessage("loginAlready"));
+        if (Main::getInstance()->isAuthenticated($player)) {
+            MessageThrottling::send($player, TextFormat::RED . Main::getInstance()->getMessage("loginAlready"));
             return false;
         }
 
         // アカウントを検索
-        $account = $this->findAccountByName($player->getName());
+        $account = Main::getInstance()->findAccountByName($player->getName());
 
         // アカウントが不在なら
         if ($account->isNull) {
-            MessageThrottling::send($player, TextFormat::RED . $this->getMessage("register"));
+            MessageThrottling::send($player, TextFormat::RED . Main::getInstance()->getMessage("register"));
             return false;
         }
 
@@ -76,35 +60,35 @@ class LoginCommandReceiver implements ICommandReceiver
         $password = trim($password);
 
         // パスワードを検証
-        if (!$this->validatePassword($player, $password, $this->getMessage("passwordRequired"))) {
+        if (!Main::getInstance()->validatePassword($player, $password, Main::getInstance()->getMessage("passwordRequired"))) {
             return false;
         }
 
         // パスワードハッシュを生成
-        $passwordHash = $this->makePasswordHash($password);
+        $passwordHash = Main::getInstance()->makePasswordHash($password);
 
         // パスワードハッシュを比較
         if ($account->passwordHash != $passwordHash) {
             // パスワード不一致メッセージを表示してリターン
-            MessageThrottling::send($player, TextFormat::RED . $this->getMessage("passwordError"));
+            MessageThrottling::send($player, TextFormat::RED . Main::getInstance()->getMessage("passwordError"));
             return false;
         }
 
         // データベースのセキュリティスタンプを更新
-        $securityStamp = $this->getSecurityStampManager()->makeStamp($player);
+        $securityStamp = Main::getInstance()->getSecurityStampManager()->makeStamp($player);
         $name = strtolower($player->getName());
 
         $sql = "UPDATE account SET securityStamp = :securityStamp WHERE name = :name";
-        $stmt = $this->preparedStatement($sql);
+        $stmt = Main::getInstance()->preparedStatement($sql);
         $stmt->bindValue(":name", $name, \PDO::PARAM_STR);
         $stmt->bindValue(":securityStamp", $securityStamp, \PDO::PARAM_STR);
         $stmt->execute();
 
         // セキュリティスタンプマネージャーに登録
-        $this->getSecurityStampManager()->add($player);
+        Main::getInstance()->getSecurityStampManager()->add($player);
 
         // ログイン成功メッセージを表示
-        MessageThrottling::send($player, TextFormat::GREEN . $this->getMessage("loginSuccessful"));
+        MessageThrottling::send($player, TextFormat::GREEN . Main::getInstance()->getMessage("loginSuccessful"));
 
         return true;
     }

@@ -4,6 +4,7 @@ namespace Jhelom\LoginAuth\CommandReceivers;
 
 use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
+use Jhelom\LoginAuth\Main;
 use Jhelom\LoginAuth\MessageThrottling;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
@@ -41,11 +42,11 @@ class UnregisterCommandReceiver implements ICommandReceiver
     public function tryUnregister(CommandSender $sender, string $targetPlayerName) : bool
     {
         // アカウントを検索
-        $account = $this->findAccountByName($targetPlayerName);
+        $account = Main::getInstance()->findAccountByName($targetPlayerName);
 
         // アカウントが不在の場合
         if ($account->isNull) {
-            MessageThrottling::send($sender, TextFormat::RED . $this->getMessage("unregisterNotFound", ["name" => $targetPlayerName]));
+            MessageThrottling::send($sender, TextFormat::RED . Main::getInstance()->getMessage("unregisterNotFound", ["name" => $targetPlayerName]));
             return false;
         }
 
@@ -62,35 +63,35 @@ class UnregisterCommandReceiver implements ICommandReceiver
         }
 
         // アカウントを検索
-        $account = $this->findAccountByName($targetPlayerName);
+        $account = Main::getInstance()->findAccountByName($targetPlayerName);
 
         // アカウントが不在の場合
         if ($account->isNull) {
-            MessageThrottling::send($sender, TextFormat::RED . $this->getMessage("unregisterNotFound"));
+            MessageThrottling::send($sender, TextFormat::RED . Main::getInstance()->getMessage("unregisterNotFound"));
             return false;
         }
 
         // データベースから削除
         $sql = "DELETE account WHERE name = :name";
-        $stmt = $this->preparedStatement($sql);
+        $stmt = Main::getInstance()->preparedStatement($sql);
         $stmt->bindValue(":name", strtolower($targetPlayerName), \PDO::PARAM_STR);
         $stmt->execute();
 
         // 削除完了メッセージを表示
-        MessageThrottling::send($sender, TextFormat::GREEN . $this->getMessage("unregisterSuccessful", ["name" => $targetPlayerName]));
+        MessageThrottling::send($sender, TextFormat::GREEN . Main::getInstance()->getMessage("unregisterSuccessful", ["name" => $targetPlayerName]));
 
         // プレイヤーを取得
-        $player = $this->getServer()->getPlayer($targetPlayerName);
+        $player = Main::getInstance()->getServer()->getPlayer($targetPlayerName);
 
         // プレイヤーが存在している場合
         if ($player !== NULL) {
             // プレイヤーがオンラインの場合
             if ($player->isOnline()) {
                 // セキュリティスタンプマネージャーから削除
-                $this->getSecurityStampManager()->remove($player);
+                Main::getInstance()->getSecurityStampManager()->remove($player);
 
                 // プレイヤーを強制ログアウト
-                $player->close("", $this->getMessage("unregisterSuccessful", ["name" => $targetPlayerName]));
+                $player->close("", Main::getInstance()->getMessage("unregisterSuccessful", ["name" => $targetPlayerName]));
             }
         }
 

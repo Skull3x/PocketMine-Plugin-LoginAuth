@@ -4,6 +4,7 @@ namespace Jhelom\LoginAuth\CommandReceivers;
 
 use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
+use Jhelom\LoginAuth\Main;
 use Jhelom\LoginAuth\MessageThrottling;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
@@ -37,7 +38,6 @@ class RegisterCommandReceiver implements ICommandReceiver
 
     public function execute2()
     {
-        $this->register();
     }
 
     /*
@@ -47,36 +47,36 @@ class RegisterCommandReceiver implements ICommandReceiver
     public function tryRegister(CommandSender $sender, string $password) : bool
     {
         // Playerクラスにキャスト
-        $player = $this->castToPlayer($sender);
+        $player = Main::getInstance()->castToPlayer($sender);
 
         // 既にログイン認証済みの場合
-        if ($this->isAuthenticated($player)) {
-            MessageThrottling::send($player, TextFormat::RED . $this->getMessage("loginAlready"));
+        if (Main::getInstance()->isAuthenticated($player)) {
+            MessageThrottling::send($player, TextFormat::RED . Main::getInstance()->getMessage("loginAlready"));
             return false;
         }
 
         // アカウントを検索
-        $account = $this->findAccountByName($player->getName());
+        $account = Main::getInstance()->findAccountByName($player->getName());
 
         // 同じ名前のアカウントが存在する場合
         if (!$account->isNull) {
-            MessageThrottling::send($player, TextFormat::RED . $this->getMessage("registerExists", ["name" => $player->getName()]));
+            MessageThrottling::send($player, TextFormat::RED . Main::getInstance()->getMessage("registerExists", ["name" => $player->getName()]));
             return false;
         }
 
         // パスワードを検証
-        if (!$this->validatePassword($player, $password, $this->getMessage("passwordRequired"))) {
+        if (!Main::getInstance()->validatePassword($player, $password, Main::getInstance()->getMessage("passwordRequired"))) {
             return false;
         }
 
         // 端末IDをもとにデータベースからアカウント一覧を取得
-        $accountList = $this->findAccountsByClientId($player->getClientId());
+        $accountList = Main::getInstance()->findAccountsByClientId($player->getClientId());
 
         // アカウント一覧の数
         $accountListCount = count($accountList);
 
         // 端末毎のアカウント上限数を取得（最低１以上で補正）
-        $accountSlot = min(1, $this->getConfig()->get("accountSlot"));
+        $accountSlot = min(1, Main::getInstance()->getConfig()->get("accountSlot"));
 
         // アカウント上限数を超過している場合
         if ($accountSlot < $accountListCount) {
@@ -92,8 +92,8 @@ class RegisterCommandReceiver implements ICommandReceiver
             // 名前一覧をカンマで連結
             $nameListStr = $name = implode(",", $nameList);
 
-            MessageThrottling::send($player, TextFormat::RED . $this->getMessage("accountSlotOver1", ["accountSlot" => $accountSlot]));
-            MessageThrottling::send($player, TextFormat::RED . $this->getMessage("accountSlotOver2"));
+            MessageThrottling::send($player, TextFormat::RED . Main::getInstance()->getMessage("accountSlotOver1", ["accountSlot" => $accountSlot]));
+            MessageThrottling::send($player, TextFormat::RED . Main::getInstance()->getMessage("accountSlotOver2"));
             MessageThrottling::send($player, TextFormat::RED . $nameListStr);
 
             return false;
@@ -114,22 +114,22 @@ class RegisterCommandReceiver implements ICommandReceiver
         }
 
         // Playerクラスにキャスト
-        $player = $this->castToPlayer($sender);
+        $player = Main::getInstance()->castToPlayer($sender);
 
         //　データベースに登録
         $sql = "INSERT INTO account (name, clientId, ip, passwordHash, securityStamp) VALUES (:name, :clientId, :ip, :passwordHash, :securityStamp)";
-        $stmt = $this->preparedStatement($sql);
+        $stmt = Main::getInstance()->preparedStatement($sql);
         $stmt->bindValue(":name", strtolower($player->getName()), \PDO::PARAM_STR);
         $stmt->bindValue(":clientId", $player->getClientId(), \PDO::PARAM_STR);
         $stmt->bindValue(":ip", $player->getAddress(), \PDO::PARAM_STR);
-        $stmt->bindValue(":passwordHash", $this->makePasswordHash($password), \PDO::PARAM_STR);
-        $stmt->bindValue(":securityStamp", $this->getSecurityStampManager()->makeStamp($player), \PDO::PARAM_STR);
+        $stmt->bindValue(":passwordHash", Main::getInstance()->makePasswordHash($password), \PDO::PARAM_STR);
+        $stmt->bindValue(":securityStamp", Main::getInstance()->getSecurityStampManager()->makeStamp($player), \PDO::PARAM_STR);
         $stmt->execute();
 
         // セキュリティスタンプマネージャーに登録
-        $this->getSecurityStampManager()->add($player);
+        Main::getInstance()->getSecurityStampManager()->add($player);
 
-        MessageThrottling::send($player, TextFormat::GREEN . $this->getMessage("registerSuccessful"));
+        MessageThrottling::send($player, TextFormat::GREEN . Main::getInstance()->getMessage("registerSuccessful"));
 
         return true;
     }

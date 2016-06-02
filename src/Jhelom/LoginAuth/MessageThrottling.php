@@ -7,7 +7,6 @@ use pocketmine\command\CommandSender;
 /*
  * 同じメッセージを連続して送信しないようする
  */
-
 class MessageThrottling
 {
     // 間隔を秒単位で指定
