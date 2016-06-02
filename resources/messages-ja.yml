@@ -1,37 +1,34 @@
 ---
-alreadyLogin: ログイン認証済みです
-alreadyExistsName: 名前{name}は既に登録されています。別の名前に変更してください
-alreadyExistsNameDeleted: 名前{name}は過去に登録されていました。別の名前に変更してください
-alreadyLoginOtherDevice: 重複ログインはできません。先にログインしている端末からログアウトしてやり直してください
+commandAtLogin: このコマンドはログイン認証していないため実行できません
+commandAtPlayer: このコマンドはクライアントから実行してください
+commandAtConsole: このコマンドはコンソールから実行してください
+
+login: ログイン認証してください。
+loginUsage: /login <password>
+loginSuccessful: ログイン認証しました
+loginAlready: ログイン認証済みです
+loginMultiDeviceError: 重複ログインはできません。先にログインしている端末からログアウトしてください
 
 register: はじめにアカウント登録してください
 registerUsage: /register <password>
 registerConfirm: 確認のためもう一度パスワードを入力してください
 registerConfirmError: パスワードが違います。もう一度最初からやり直してください
-registerSuccessful: アカウント登録しました
+registerSuccessful: アカウントを登録しました
 registerAlready: 既にアカウントを登録済みです
+registerExists: 名前{name}は既に登録されています。別の名前に変更してください
 
-unregisterUsage: /unregisger <password>
-unregisterNotFound: アカウントは存在しません
-unregisterPasswordRequired: アカウントを削除するにはパスワードを入力してくだしい
-unregisterPasswordError: パスワードが違います。アカウントを削除できませんでした
-unregisterConfirm: 本当にアカウントを削除しますか？削除するなら Y を、取消すなら N を入力してください
-unregisterCancel: アカウントの削除を取消しました
-unregisterSuccessful: アカウントを削除しました
+unregisterNotFound: アカウント「{name}」は存在しません
+unregisterConfirm: 本当にアカウント「{name}」を削除しますか？削除するには Y を、キャンセルは N を入力してください
+unregisterCancel: アカウントの削除をキャンセルしました
+unregisterSuccessful: アカウント「{name}」が削除されました
 
-login: ログイン認証してください。
-loginUsage: /login <password>
-loginSuccessful: ログイン認証しました
-
+passwordError: パスワードが違います
 passwordRequired: パスワードを入力してください
-passwordError: 確認パスワードが違います。パスワードの変更を中止しました
-passwordConfirm: 確認のためもう一度パスワードを入力してください
 passwordLengthMin: パスワードは{length}文字以上にしてください
 passwordLengthMax: パスワードは{length}文字以下にしてください
-passwordChangeUsage: /password <newPassword>
-passwordChangeRequired: 新しいパスワードを入力してください
-passwordChangeSuccessful: パスワードを変更しました
+passwordFormat: パスワードは英数字にしてください
 
-accountSlotOver1: １つの端末で登録可能なアカウント数の上限は {accountSlot}です。この端末ではこれ以上アカウントを登録することはできません
+accountSlotOver1: この端末ではこれ以上アカウントを登録することはできません。アカウントを削除したい場合はサーバー管理者に依頼してください
 accountSlotOver2: この端末で登録されていアカウントの一覧は次の通りです。名前を変更してログインしなおしてください
 
+messageResourceNotFound: メッセージリソース「{file}」が見つかりません。

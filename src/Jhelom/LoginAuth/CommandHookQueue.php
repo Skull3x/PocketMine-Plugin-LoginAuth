@@ -1,8 +1,9 @@
 <?php
 
-namespace LoginAuth;
+namespace Jhelom\LoginAuth;
 
-use pocketmine\Player;
+
+use pocketmine\command\CommandSender;
 
 require_once("CommandHook.php");
 
@@ -10,23 +11,19 @@ class CommandHookQueue
 {
     private $list = [];
 
-    /**
+    /*
      * キーを生成
-     * @param Player $player
-     * @return string
      */
-    public function makeKey(Player $player) : string
+    public function makeKey(CommandSender $sender) : string
     {
-        return $player->getRawUniqueId();
+        return $sender->getName();
     }
 
-    /**
-     * プレイヤーに関連付けされたキューが存在すれば true を返す
+    /*
+     * キューが存在すれば true を返す
      *
-     * @param Player $player
-     * @return bool
      */
-    public function exists(Player $player) : bool
+    public function exists(CommandSender $player) : bool
     {
         $key = $this->makeKey($player);
 
@@ -41,15 +38,13 @@ class CommandHookQueue
         return true;
     }
 
-    /**
+    /*
      * プレイヤーに関連付けされたキーを取り出す。不在の場合は isNull が true の CommandHook を返す
      *
-     * @param Player $player
-     * @return CommandHook
      */
-    public function dequeue(Player $player) : CommandHook
+    public function dequeue(CommandSender $sender) : CommandHook
     {
-        $key = $this->makeKey($player);
+        $key = $this->makeKey($sender);
 
         if (!array_key_exists($key, $this->list)) {
             return new CommandHook(true);
@@ -64,37 +59,31 @@ class CommandHookQueue
         return $hook;
     }
 
-    /**
-     * プレイヤーに関連付けしてキューを入れる
-     *
-     * @param array $callback
-     * @param Player $player
-     * @param $data
+    /*
+     * キューに入れる
      */
-    public function enqueue(array $callback, Player $player, $data)
+    public function enqueue(array $callback, CommandSender $sender, $data)
     {
-        $key = $this->makeKey($player);
+        $key = $this->makeKey($sender);
 
         if (!array_key_exists($key, $this->list)) {
             $this->list[$key] = [];
         }
 
         $hook = new CommandHook();
-        $hook->player = $player;
+        $hook->sender = $sender;
         $hook->callback = $callback;
         $hook->data = $data;
 
         array_push($this->list[$key], $hook);
     }
 
-    /**
-     * プレイヤーに関連付けされたキューをクリアする
-     *
-     * @param Player $player
+    /*
+     *  キューをクリアする
      */
-    public function clear(Player $player)
+    public function clear(CommandSender $sender)
     {
-        $key = $this->makeKey($player);
+        $key = $this->makeKey($sender);
 
         unset($this->list[$key]);
     }

@@ -1,6 +1,7 @@
 <?php
 
-namespace LoginAuth;
+namespace Jhelom\LoginAuth;
+
 
 class CommandHook
 {
@@ -14,8 +15,7 @@ class CommandHook
         $this->isNull = $isNull;
     }
 
-    // プレイヤー
-    public $player;
+    public $sender;
 
     // コールバック
     public $callback;

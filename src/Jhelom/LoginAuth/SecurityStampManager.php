@@ -1,14 +1,14 @@
 <?php
 
-namespace LoginAuth;
+namespace Jhelom\LoginAuth;
+
 
 use pocketmine\Player;
 
 /**
  * セキュリティスタンプマネージャー
  *
- * ログイン認証状態の管理及び検証を行う。
- * 高速化のためセキュリティスタンプはメモリ上にキャッシュする。
+ * ログイン認証の状態を管理する
  *
  * @package LoginAuth
  */

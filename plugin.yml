@@ -1,5 +1,5 @@
 name: LoginAuth
-main: LoginAuth\Main
+main: Jhelom\LoginAuth\Main
 version: "1.0"
 api: [2.0.0]
 load: STARTUP
@@ -8,15 +8,13 @@ description: ログイン認証
 website: https://github.com/jhelom/PocketMine-Plugin-LoginAuth
 
 commands:
+  login:
+    description: "ログイン(LoginAuth)"
+    usage: "/login <password>"
   register:
     description: "アカウント登録(LoginAuth)"
     usage: "/register <password>"
   unregister:
     description: "アカウント削除(LoginAuth)"
-    usage: "/unregister <password>"
-  login:
-    description: "ログイン(LoginAuth)"
-    usage: "/login <password>"
-  password:
-    description: "パスワード変更(loginAuth)"
-    usage: "/password <newPassword>"
+    usage: "/unregister <player>"
+
