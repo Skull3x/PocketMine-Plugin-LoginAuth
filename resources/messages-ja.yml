@@ -2,21 +2,23 @@
 commandAtLogin: このコマンドはログイン認証していないため実行できません
 commandAtPlayer: このコマンドはクライアントから実行してください
 commandAtConsole: このコマンドはコンソールから実行してください
+commandAtOpOnly: このコマンドはOPのみ実行できます
 
-login: ログイン認証してください。
+login: ログイン認証してください
 loginUsage: /login <password>
 loginSuccessful: ログイン認証しました
 loginAlready: ログイン認証済みです
 loginMultiDeviceError: 重複ログインはできません。先にログインしている端末からログアウトしてください
 
-register: はじめにアカウント登録してください
+register: はじめての方はアカウント登録してください
 registerUsage: /register <password>
 registerConfirm: 確認のためもう一度パスワードを入力してください
-registerConfirmError: パスワードが違います。もう一度最初からやり直してください
+registerConfirmError: パスワードが違います。もう一度 register からやり直してください
 registerSuccessful: アカウントを登録しました
 registerAlready: 既にアカウントを登録済みです
 registerExists: 名前{name}は既に登録されています。別の名前に変更してください
 
+unregisterRequired: 削除したいアカウント（プレイヤー名）を入力してください
 unregisterNotFound: アカウント「{name}」は存在しません
 unregisterConfirm: 本当にアカウント「{name}」を削除しますか？削除するには Y を、キャンセルは N を入力してください
 unregisterCancel: アカウントの削除をキャンセルしました
@@ -26,9 +28,12 @@ passwordError: パスワードが違います
 passwordRequired: パスワードを入力してください
 passwordLengthMin: パスワードは{length}文字以上にしてください
 passwordLengthMax: パスワードは{length}文字以下にしてください
-passwordFormat: パスワードは英数字にしてください
+passwordFormat: パスワードは半角英数字のみにしてください
 
 accountSlotOver1: この端末ではこれ以上アカウントを登録することはできません。アカウントを削除したい場合はサーバー管理者に依頼してください
 accountSlotOver2: この端末で登録されていアカウントの一覧は次の通りです。名前を変更してログインしなおしてください
 
 messageResourceNotFound: メッセージリソース「{file}」が見つかりません。
+
+authUsage: auth サブコマンドの使用方法(LoginAuth)
+authUsage2: アカウント削除 = auth unregiser <プレイヤー名>

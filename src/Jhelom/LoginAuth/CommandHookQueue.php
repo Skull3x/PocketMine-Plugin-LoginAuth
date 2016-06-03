@@ -4,8 +4,7 @@ namespace Jhelom\LoginAuth;
 
 
 use pocketmine\command\CommandSender;
-
-require_once("CommandHook.php");
+use pocketmine\Player;
 
 class CommandHookQueue
 {
@@ -16,7 +15,17 @@ class CommandHookQueue
      */
     public function makeKey(CommandSender $sender) : string
     {
-        return $sender->getName();
+        // Player の場合
+        if ($sender instanceof Player) {
+            // キャストして
+            $player = Main::castCommandSenderToPlayer($sender);
+
+            // ユニークIDを返す
+            return $player->getRawUniqueId();
+        } else {
+            // Player ではない場合、名前を返す
+            return $sender->getName();
+        }
     }
 
     /*
@@ -62,7 +71,7 @@ class CommandHookQueue
     /*
      * キューに入れる
      */
-    public function enqueue(array $callback, CommandSender $sender, $data)
+    public function enqueue(array $callback, CommandSender $sender, $data = NULL)
     {
         $key = $this->makeKey($sender);
 
@@ -71,7 +80,6 @@ class CommandHookQueue
         }
 
         $hook = new CommandHook();
-        $hook->sender = $sender;
         $hook->callback = $callback;
         $hook->data = $data;
 

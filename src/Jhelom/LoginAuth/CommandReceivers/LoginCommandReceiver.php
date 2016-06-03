@@ -6,28 +6,47 @@ use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
 use Jhelom\LoginAuth\MessageThrottling;
-use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\utils\TextFormat;
 
 class LoginCommandReceiver implements ICommandReceiver
 {
+    /*
+     * コマンドの名前
+     */
     public function getName() : string
     {
         return "login";
     }
 
+    /*
+     * コンソール実行許可
+     */
     public function isAllowConsole() : bool
     {
         return false;
     }
 
+    /*
+     * プレイヤー実行許可
+     */
     public function isAllowPlayer() : bool
     {
         return true;
     }
 
-    public function execute(CommandInvoker $invoker, CommandSender $sender, Command $command, array $args)
+    /*
+     * OPのみ実行許可
+     */
+    public function isAllowOpOnly(): bool
+    {
+        return false;
+    }
+
+    /*
+     * 実行
+     */
+    public function execute(CommandInvoker $invoker, CommandSender $sender, array $args)
     {
         // TODO: Implement execute() method.
     }
@@ -36,10 +55,10 @@ class LoginCommandReceiver implements ICommandReceiver
     /*
      * ログインする
      */
-    public function login(CommandInvoker $invoker, CommandSender $sender, string $password):bool
+    public function login(CommandSender $sender, string $password):bool
     {
         // Playerクラスにキャスト
-        $player = Main::getInstance()->castToPlayer($sender);
+        $player = Main::castCommandSenderToPlayer($sender);
 
         // 既にログイン認証済みの場合
         if (Main::getInstance()->isAuthenticated($player)) {

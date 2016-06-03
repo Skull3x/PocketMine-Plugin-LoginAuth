@@ -15,8 +15,6 @@ class CommandHook
         $this->isNull = $isNull;
     }
 
-    public $sender;
-
     // コールバック
     public $callback;
 

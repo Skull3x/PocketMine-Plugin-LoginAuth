@@ -2,6 +2,9 @@
 
 namespace Jhelom\LoginAuth;
 
+use Jhelom\LoginAuth\CommandReceivers\AuthCommandReceiver;
+use Jhelom\LoginAuth\CommandReceivers\LoginCommandReceiver;
+use Jhelom\LoginAuth\CommandReceivers\RegisterCommandReceiver;
 use pocketmine\command\CommandSender;
 use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\event\block\BlockPlaceEvent;
@@ -10,6 +13,7 @@ use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\inventory\InventoryOpenEvent;
 use pocketmine\event\inventory\InventoryPickupItemEvent;
 use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerCommandPreprocessEvent;
 use pocketmine\event\player\PlayerDropItemEvent;
 use pocketmine\event\player\PlayerInteractEvent;
 use pocketmine\event\player\PlayerItemConsumeEvent;
@@ -17,6 +21,8 @@ use pocketmine\event\player\PlayerJoinEvent;
 use pocketmine\event\player\PlayerMoveEvent;
 use pocketmine\event\player\PlayerPreLoginEvent;
 use pocketmine\event\player\PlayerQuitEvent;
+use pocketmine\event\server\ServerCommandEvent;
+use pocketmine\inventory\InventoryHolder;
 use pocketmine\Player;
 use pocketmine\utils\TextFormat;
 
@@ -29,12 +35,40 @@ class EventListener implements Listener
     // メイン
     private $main;
 
+    private $invoker;
+
     /*
      * コンストラクタ
      */
     public function __construct(Main $main)
     {
         $this->main = $main;
+
+        // インボーカーを初期化
+        $this->invoker = new CommandInvoker($main);
+        $this->invoker->add(new RegisterCommandReceiver());
+        $this->invoker->add(new LoginCommandReceiver());
+        $this->invoker->add(new AuthCommandReceiver());
+    }
+
+    /*
+     *
+     */
+    public function onPlayerCommand(PlayerCommandPreprocessEvent $event)
+    {
+        $this->main->getLogger()->debug("onPlayerCommand: " . $event->getPlayer()->getName());
+
+        $this->invoker->invokePlayerCommand($event);
+    }
+
+    /*
+     *
+     */
+    public function onServerCommand(ServerCommandEvent $event)
+    {
+        $this->main->getLogger()->debug("onServerCommand: " . $event->getSender()->getName());
+
+        $this->invoker->invokeServerCommand($event);
     }
 
     /*
@@ -106,7 +140,7 @@ class EventListener implements Listener
         $player = $event->getPlayer();
 
         // コマンドフックをクリア
-        $this->main->getInvoker()->getHookQueue()->clear($player);
+        $this->invoker->getHookQueue()->clear($player);
 
         // メッセージスロットリングをクリア
         MessageThrottling::clear($player);
@@ -177,10 +211,10 @@ class EventListener implements Listener
     {
         $this->main->getLogger()->debug("onEntityDamage: ");
 
-        $player = $event->getEntity();
+        $entity = $event->getEntity();
 
         // 未認証ならイベントをキャンセル
-        $this->cancelEventIfNotAuth($event, $player);
+        $this->cancelEventIfNotAuth($event, $entity);
     }
 
     /*
@@ -229,10 +263,19 @@ class EventListener implements Listener
     {
         $this->main->getLogger()->debug("onPickupItem: ");
 
-        $player = $event->getInventory()->getHolder();
+        $holder = $event->getInventory()->getHolder();
 
-        // 未認証ならイベントをキャンセル
-        $this->cancelEventIfNotAuth($event, $player);
+        if ($holder instanceof Player) {
+            // 未認証ならイベントをキャンセル
+            $player = $this->castInventoryHolderToPlayer($holder);
+            $this->cancelEventIfNotAuth($event, $player);
+
+        }
+    }
+
+    private function castInventoryHolderToPlayer(InventoryHolder $holder) : Player
+    {
+        return $holder;
     }
 
     /*
@@ -241,15 +284,15 @@ class EventListener implements Listener
     private function cancelEventIfNotAuth(Cancellable $event, CommandSender $sender) : bool
     {
         // Player ではない場合
-        if ($this->main->isNotPlayer($sender)) {
-            return;
+        if (Main::isNotPlayer($sender)) {
+            return false;
         }
 
-        $player = $this->main->castToPlayer($sender);
+        $player = Main::castCommandSenderToPlayer($sender);
 
         // 認証済みの場合
-        if ($this->main->isAuthenticated($player)) {
-            return;
+        if (Main::getInstance()->isAuthenticated($player)) {
+            return false;
         }
 
         // イベントをキャンセル
@@ -257,6 +300,8 @@ class EventListener implements Listener
 
         // ログインまたはアカウント登録を催促
         $this->needAuthMessage($player);
+
+        return true;
     }
 
     /*
@@ -267,12 +312,12 @@ class EventListener implements Listener
         // アカウント登録状態に応じて表示するメッセージを切り替える
         if ($this->main->isRegistered($player)) {
             // ログインしてもらうメッセージ
-            MessageThrottling::send($player, TextFormat::RED . $this->main->getMessage("login"), $immediate);
-            MessageThrottling::send($player, TextFormat::RED . $this->main->getMessage("loginUsage"), $immediate);
+            $message = $this->main->getMessageList(["login", "loginUsage"], TextFormat::YELLOW);
+            MessageThrottling::send($player, $message, $immediate);
         } else {
             // 未登録ならアカウント登録してもらうメッセージ
-            MessageThrottling::send($player, TextFormat::RED . $this->main->getMessage("register"), $immediate);
-            MessageThrottling::send($player, TextFormat::RED . $this->main->getMessage("registerUsage"), $immediate);
+            $message = $this->main->getMessageList(["register", "registerUsage"], TextFormat::YELLOW);
+            MessageThrottling::send($player, $message, $immediate);
         }
     }
 }

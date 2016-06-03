@@ -2,10 +2,6 @@
 
 namespace Jhelom\LoginAuth;
 
-use Jhelom\LoginAuth\CommandReceivers\LoginCommandReceiver;
-use Jhelom\LoginAuth\CommandReceivers\RegisterCommandReceiver;
-use Jhelom\LoginAuth\CommandReceivers\UnregisterCommandReceiver;
-use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\level;
 use pocketmine\Player;
@@ -26,9 +22,6 @@ class Main extends PluginBase
 
     // セキュリティスタンプマネージャー
     private $securityStampManager;
-
-    // インボーカー
-    private $invoker;
 
     // データベース初期化SQL
     private $ddl = <<<_SQL_
@@ -54,8 +47,9 @@ _SQL_;
      */
     public function onEnable()
     {
-        $this->getLogger()->info("§a Designed by jhelom & dragon7");
+        $this->getLogger()->info("§a 開発者 jhelom & dragon7");
 
+        // スタティックに代入
         self::$instance = $this;
 
         // デフォルト設定をセーブ
@@ -66,12 +60,6 @@ _SQL_;
 
         // メッセージリソースをロード
         $this->loadMessageResource($this->getConfig()->get("locale"));
-
-        // インボーカーを初期化
-        $this->invoker = new CommandInvoker($this);
-        $this->invoker->add(new RegisterCommandReceiver());
-        $this->invoker->add(new UnregisterCommandReceiver());
-        $this->invoker->add(new LoginCommandReceiver());
 
         // セキュリティスタンプマネージャーを初期化
         $this->securityStampManager = new SecurityStampManager();
@@ -89,16 +77,6 @@ _SQL_;
      */
     public function onDisable()
     {
-    }
-
-    /*
-     * コマンド実行イベント
-     */
-    public function onCommand(CommandSender $sender, Command $command, $label, array $args)
-    {
-        $this->getLogger()->debug("Main.onCommand: " . $sender->getName() . ": " . $command->getName());
-
-        return $this->getInvoker()->invoke($sender, $command, $args);
     }
 
     /*
@@ -127,6 +105,17 @@ _SQL_;
         $this->messageResource = new Config($path, Config::YAML);
     }
 
+    public function getMessageList(array $keyList, string $prefix = "", array $args = NULL) : string
+    {
+        $strList = [];
+
+        foreach ($keyList as $key) {
+            array_push($strList, $prefix . $this->getMessage($key, $args));
+        }
+
+        return implode(PHP_EOL, $strList);
+    }
+
     /*
      * メッセージを取得
      *
@@ -134,7 +123,13 @@ _SQL_;
      */
     public function getMessage(string $key, array $args = NULL) : string
     {
-        $message = $this->messageResource->get($key) ?? "";
+        /** @noinspection PhpUndefinedMethodInspection */
+        $message = $this->messageResource->get($key);
+
+        if ($message == NULL || $message == "") {
+            $this->getLogger()->warning("メッセージリソース不在: " . $key);
+            $message = "";
+        }
 
         // args が配列の場合
         if (is_array($args)) {
@@ -213,7 +208,7 @@ _SQL_;
         $stmt->execute();
 
         // データベースからクラスとして取得
-        $account = $stmt->fetchObject("LoginAuth\\Account");
+        $account = $stmt->fetchObject("Jhelom\\LoginAuth\\Account");
 
         // 検索結果が０件の場合は false なので
         if ($account === false) {
@@ -231,13 +226,13 @@ _SQL_;
      */
     public function findAccountsByClientId(string $clientId) : array
     {
-        $sql = "SELECT * FROM account WHERE clientId = :clientId AND isDeleted == 0 ORDER BY name";
+        $sql = "SELECT * FROM account WHERE clientId = :clientId ORDER BY name";
         $stmt = $this->preparedStatement($sql);
         $stmt->bindValue(":clientId", $clientId, \PDO::PARAM_STR);
         $stmt->execute();
 
         // データベースからクラスの配列として取得
-        $results = $stmt->fetchAll(\PDO::FETCH_CLASS, "LoginAuth\\Account");
+        $results = $stmt->fetchAll(\PDO::FETCH_CLASS, "Jhelom\\LoginAuth\\Account");
 
         return $results;
     }
@@ -298,6 +293,11 @@ _SQL_;
             return false;
         }
 
+        if (!preg_match("/^[a-zA-Z0-9]+$/", $password)) {
+            $player->sendMessage(TextFormat::RED . $this->getMessage("passwordFormat"));
+            return false;
+        }
+
         // 設定ファイルからパスワードの文字数の下限を取得
         $passwordLengthMin = $this->getConfig()->get("passwordLengthMin");
 
@@ -330,24 +330,28 @@ _SQL_;
         return hash("sha256", $password);
     }
 
-    public function isPlayer(CommandSender $sender) : bool
+    /*
+     * CommandSender が Player なら true を返す
+     */
+    public static function isPlayer(CommandSender $sender) : bool
     {
         return $sender instanceof Player;
     }
 
-    public function isNotPlayer(CommandSender $sender) : bool
+    /*
+     * CommandSender が Player でなければ true を返す
+     */
+    public static function isNotPlayer(CommandSender $sender) : bool
     {
-        return !$this->isPlayer($sender);
+        return !self::isPlayer($sender);
     }
 
-    public function castToPlayer(CommandSender $sender) : Player
+    /*
+     * CommandSender（基底クラス） を Player（派生クラス）に（タイプヒンティングで疑似的で）ダウンキャストする
+     */
+    public static function castCommandSenderToPlayer(CommandSender $sender) : Player
     {
         return $sender;
-    }
-
-    public function getInvoker() : CommandInvoker
-    {
-        return $this->invoker;
     }
 }
 

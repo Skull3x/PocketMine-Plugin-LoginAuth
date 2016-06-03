@@ -7,6 +7,7 @@ use pocketmine\command\CommandSender;
 /*
  * 同じメッセージを連続して送信しないようする
  */
+
 class MessageThrottling
 {
     // 間隔を秒単位で指定
@@ -43,7 +44,9 @@ class MessageThrottling
             self::$lastTimeList[$key] = $now;
 
             // メッセージを送信
-            $sender->sendMessage($message);
+            foreach (explode(PHP_EOL, $message) as $str) {
+                $sender->sendMessage($str);
+            }
         }
     }
 
@@ -64,11 +67,9 @@ class MessageThrottling
             return true;
         }
 
-        // 最終メッセージを取得
         $lastMessage = self::$lastMessageList[$key];
 
-        // 最終メッセージと違う場合
-        if ($message != $lastMessage) {
+        if ($lastMessage !== $message) {
             // 送信することを示す true を返す
             return true;
         }
@@ -77,7 +78,7 @@ class MessageThrottling
         $lastTime = self::$lastTimeList[$key];
 
         // 時間の差分を取得
-        $interval = $now->diff($lastTime);
+        $interval = $now->diff($lastTime, true);
 
         // 時差が指定値以上の場合
         if ($interval->s >= self::INTERVAL_SECONDS) {
@@ -89,12 +90,14 @@ class MessageThrottling
         return false;
     }
 
-    private static function makeKey(CommandSender $sender) : string
+    private
+    static function makeKey(CommandSender $sender) : string
     {
         return $sender->getName();
     }
 
-    public static function clear(CommandSender $sender)
+    public
+    static function clear(CommandSender $sender)
     {
         $key = self::makeKey($sender);
         unset(self::$lastTimeList[$key]);

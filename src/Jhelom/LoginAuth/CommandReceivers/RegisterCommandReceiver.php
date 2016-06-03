@@ -6,38 +6,73 @@ use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
 use Jhelom\LoginAuth\MessageThrottling;
-use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\utils\TextFormat;
 
+/*
+ * アカウント登録
+ */
 class RegisterCommandReceiver implements ICommandReceiver
 {
+    /*
+     * コマンド名
+     */
     public function getName() : string
     {
         return "register";
     }
 
+    /*
+     * コンソール実行許可
+     */
     public function isAllowConsole() : bool
     {
         return false;
     }
 
+    /*
+     * プレイヤー実行許可
+     */
     public function isAllowPlayer() : bool
     {
         return true;
     }
 
-    public function execute(CommandInvoker $invoker, CommandSender $sender, Command $command, array $args)
+    /*
+     * OPのみ実行許可
+     */
+    public function isAllowOpOnly(): bool
+    {
+        return false;
+    }
+
+    /*
+     * 実行
+     */
+    public function execute(CommandInvoker $invoker, CommandSender $sender, array $args)
     {
         $password = array_shift($args) ?? "";
 
         if ($this->tryRegister($sender, $password)) {
+            MessageThrottling::send($sender, TextFormat::YELLOW . Main::getInstance()->getMessage("registerConfirm"));
             $invoker->getHookQueue()->enqueue([$this, "execute2"], $sender, $password);
         }
     }
 
-    public function execute2()
+    public function execute2(CommandInvoker $invoker, CommandSender $sender, array $args, $data)
     {
+        $password = array_shift($args) ?? "";
+
+        Main::getInstance()->getLogger()->debug("register: execute2: " . $password . " = " . $data);
+
+        if ($data !== $password) {
+            MessageThrottling::send($sender, TextFormat::YELLOW . Main::getInstance()->getMessage(("registerConfirmError")));
+            return;
+        }
+
+        if ($this->register($sender, $password)) {
+            MessageThrottling::send($sender, TextFormat::GREEN . Main::getInstance()->getMessage("registerSuccessful"));
+        }
     }
 
     /*
@@ -47,7 +82,7 @@ class RegisterCommandReceiver implements ICommandReceiver
     public function tryRegister(CommandSender $sender, string $password) : bool
     {
         // Playerクラスにキャスト
-        $player = Main::getInstance()->castToPlayer($sender);
+        $player = Main::getInstance()->castCommandSenderToPlayer($sender);
 
         // 既にログイン認証済みの場合
         if (Main::getInstance()->isAuthenticated($player)) {
@@ -114,7 +149,7 @@ class RegisterCommandReceiver implements ICommandReceiver
         }
 
         // Playerクラスにキャスト
-        $player = Main::getInstance()->castToPlayer($sender);
+        $player = Main::getInstance()->castCommandSenderToPlayer($sender);
 
         //　データベースに登録
         $sql = "INSERT INTO account (name, clientId, ip, passwordHash, securityStamp) VALUES (:name, :clientId, :ip, :passwordHash, :securityStamp)";

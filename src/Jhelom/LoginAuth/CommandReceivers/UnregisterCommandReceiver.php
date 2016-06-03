@@ -6,41 +6,79 @@ use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
 use Jhelom\LoginAuth\MessageThrottling;
-use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\utils\TextFormat;
 
 class UnregisterCommandReceiver implements ICommandReceiver
 {
+    /*
+     * コマンドの名前
+     */
     public function getName() : string
     {
         return "unregister";
     }
 
+    /*
+     * コンソール実行許可
+     */
     public function isAllowConsole() : bool
     {
         return true;
     }
 
+    /*
+     * プレイヤー実行許可
+     */
     public function isAllowPlayer() : bool
     {
         return false;
     }
 
-    public function execute(CommandInvoker $invoker, CommandSender $sender, Command $command, array $args)
+    /*
+     * OPのみ実行許可
+     */
+    public function isAllowOpOnly(): bool
     {
+        return true;
+    }
+
+    public function execute(CommandInvoker $invoker, CommandSender $sender, array $args)
+    {
+        Main::getInstance()->getLogger()->debug("UnregisterCommandReceiver.execute: ");
+
         $targetPlayerName = array_shift($args) ?? "";
 
         if ($this->tryUnregister($sender, $targetPlayerName)) {
+            $msg = TextFormat::YELLOW . Main::getInstance()->getMessage("unregisterConfirm", ["name" => $targetPlayerName]);
+            MessageThrottling::send($sender, $msg);
+            $invoker->getHookQueue()->enqueue([$this, "execute2"], $sender, $targetPlayerName);
 
         }
     }
 
+    public function execute2(CommandInvoker $invoker, CommandSender $sender, array $args, $data)
+    {
+        $input = strtolower(array_shift($args) ?? "");
+
+        if ($input === "y") {
+            $this->unregister($sender, $data);
+        } else {
+            MessageThrottling::send($sender, TextFormat::YELLOW . Main::getInstance()->getMessage("unregisterCancel"));
+        }
+    }
+
     /*
- * アカウント削除が可能か検証する（データベースへの反映は行わない）
- */
+     * アカウント削除が可能か検証する（データベースへの反映は行わない）
+     */
     public function tryUnregister(CommandSender $sender, string $targetPlayerName) : bool
     {
+        if ($targetPlayerName === "") {
+            MessageThrottling::send($sender, TextFormat::RED . Main::getInstance()->getMessage("unregisterRequired", ["name" => $targetPlayerName]));
+            MessageThrottling::send($sender, TextFormat::RED . Main::getInstance()->getMessage("authUsage2"));
+            return false;
+        }
+
         // アカウントを検索
         $account = Main::getInstance()->findAccountByName($targetPlayerName);
 
@@ -72,7 +110,7 @@ class UnregisterCommandReceiver implements ICommandReceiver
         }
 
         // データベースから削除
-        $sql = "DELETE account WHERE name = :name";
+        $sql = "DELETE FROM account WHERE name = :name";
         $stmt = Main::getInstance()->preparedStatement($sql);
         $stmt->bindValue(":name", strtolower($targetPlayerName), \PDO::PARAM_STR);
         $stmt->execute();

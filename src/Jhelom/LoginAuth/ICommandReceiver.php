@@ -1,14 +1,7 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: yoshizawa
- * Date: 2016/06/02
- * Time: 14:17
- */
 
 namespace Jhelom\LoginAuth;
 
-use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 
 /*
@@ -25,18 +18,23 @@ interface ICommandReceiver
     public function getName() : string;
 
     /*
-     * コンソールから実行可能なら true を返す
+     * コンソール実行許可
      */
     public function isAllowConsole() : bool;
 
     /*
-     * プレイヤーが実行可能なら true を返す
+     * プレイヤー実行許可
      */
     public function isAllowPlayer() : bool;
 
     /*
-     * 実行する
+     * OPのみ実行許可
      */
-    public function execute(CommandInvoker $invoker, CommandSender $sender, Command $command, array $args);
+    public function isAllowOpOnly(): bool;
+
+    /*
+     * 実行
+     */
+    public function execute(CommandInvoker $invoker, CommandSender $sender, array $args);
 
 }

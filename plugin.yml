@@ -14,7 +14,7 @@ commands:
   register:
     description: "アカウント登録(LoginAuth)"
     usage: "/register <password>"
-  unregister:
-    description: "アカウント削除(LoginAuth)"
-    usage: "/unregister <player>"
+  auth:
+    description: "アカウント管理(LoginAuth)。アカウント削除など。"
+    usage: "/auth <unregister>"
 
