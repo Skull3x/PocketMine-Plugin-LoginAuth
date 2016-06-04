@@ -5,7 +5,6 @@ namespace Jhelom\LoginAuth\CommandReceivers;
 use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
-use Jhelom\LoginAuth\MessageThrottling;
 use pocketmine\command\CommandSender;
 use pocketmine\utils\TextFormat;
 
@@ -48,7 +47,8 @@ class LoginCommandReceiver implements ICommandReceiver
      */
     public function execute(CommandInvoker $invoker, CommandSender $sender, array $args)
     {
-        // TODO: Implement execute() method.
+        $password = array_shift($args) ?? "";
+        $this->login($sender, $password);
     }
 
 
@@ -62,7 +62,7 @@ class LoginCommandReceiver implements ICommandReceiver
 
         // 既にログイン認証済みの場合
         if (Main::getInstance()->isAuthenticated($player)) {
-            MessageThrottling::send($player, TextFormat::RED . Main::getInstance()->getMessage("loginAlready"));
+            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("loginAlready"));
             return false;
         }
 
@@ -71,7 +71,7 @@ class LoginCommandReceiver implements ICommandReceiver
 
         // アカウントが不在なら
         if ($account->isNull) {
-            MessageThrottling::send($player, TextFormat::RED . Main::getInstance()->getMessage("register"));
+            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("register"));
             return false;
         }
 
@@ -89,7 +89,7 @@ class LoginCommandReceiver implements ICommandReceiver
         // パスワードハッシュを比較
         if ($account->passwordHash != $passwordHash) {
             // パスワード不一致メッセージを表示してリターン
-            MessageThrottling::send($player, TextFormat::RED . Main::getInstance()->getMessage("passwordError"));
+            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("passwordError"));
             return false;
         }
 
@@ -107,7 +107,7 @@ class LoginCommandReceiver implements ICommandReceiver
         Main::getInstance()->getSecurityStampManager()->add($player);
 
         // ログイン成功メッセージを表示
-        MessageThrottling::send($player, TextFormat::GREEN . Main::getInstance()->getMessage("loginSuccessful"));
+        $sender->sendMessage(TextFormat::GREEN . Main::getInstance()->getMessage("loginSuccessful"));
 
         return true;
     }

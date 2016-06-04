@@ -32,8 +32,12 @@ use pocketmine\utils\TextFormat;
 
 class EventListener implements Listener
 {
+    const INTERVAL_SECONDS = 5;
+
     // メイン
     private $main;
+
+    private $lastSendMessageTime = [];
 
     private $invoker;
 
@@ -52,7 +56,7 @@ class EventListener implements Listener
     }
 
     /*
-     *
+     * プレイヤーがコマンドを実行するときのイベント
      */
     public function onPlayerCommand(PlayerCommandPreprocessEvent $event)
     {
@@ -62,7 +66,7 @@ class EventListener implements Listener
     }
 
     /*
-     *
+     * コンソールからコマンドを実行するときのイベント
      */
     public function onServerCommand(ServerCommandEvent $event)
     {
@@ -122,7 +126,7 @@ class EventListener implements Listener
         // 認証済みなら
         if ($this->main->isAuthenticated($player)) {
             // ログイン認証済みメッセージ表示
-            MessageThrottling::send($player, TextFormat::GREEN . $this->main->getMessage("loginAlready"));
+            $player->sendMessage(TextFormat::GREEN . $this->main->getMessage("loginAlready"));
         } else {
             // ログインまたはアカウント登録してくれメッセージを表示
             $this->needAuthMessage($player, true);
@@ -142,8 +146,7 @@ class EventListener implements Listener
         // コマンドフックをクリア
         $this->invoker->getHookQueue()->clear($player);
 
-        // メッセージスロットリングをクリア
-        MessageThrottling::clear($player);
+        unset($this->lastSendMessageTime[$player->getRawUniqueId()]);
     }
 
     /*
@@ -309,15 +312,29 @@ class EventListener implements Listener
      */
     private function needAuthMessage(Player $player, bool $immediate = false)
     {
+        $key = $player->getRawUniqueId();
+        $now = new \DateTime();
+
+        if (array_key_exists($key, $this->lastSendMessageTime)) {
+            $lastTime = $this->lastSendMessageTime[$key];
+            $interval = $now->diff($lastTime, true);
+
+            if ($interval->s >= self::INTERVAL_SECONDS) {
+                return;
+            }
+        }
+
+        $this->lastSendMessageTime[$key] = $now;
+
         // アカウント登録状態に応じて表示するメッセージを切り替える
         if ($this->main->isRegistered($player)) {
             // ログインしてもらうメッセージ
-            $message = $this->main->getMessageList(["login", "loginUsage"], TextFormat::YELLOW);
-            MessageThrottling::send($player, $message, $immediate);
+            $player->sendMessage(TextFormat::YELLOW . $this->main->getMessage("login"));
+            $player->sendMessage(TextFormat::YELLOW . $this->main->getMessage("loginUsage"));
         } else {
             // 未登録ならアカウント登録してもらうメッセージ
-            $message = $this->main->getMessageList(["register", "registerUsage"], TextFormat::YELLOW);
-            MessageThrottling::send($player, $message, $immediate);
+            $player->sendMessage(TextFormat::YELLOW . $this->main->getMessage("register"));
+            $player->sendMessage(TextFormat::YELLOW . $this->main->getMessage("registerUsage"));
         }
     }
 }

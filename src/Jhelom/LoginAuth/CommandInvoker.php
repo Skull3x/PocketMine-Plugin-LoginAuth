@@ -126,21 +126,21 @@ class CommandInvoker
                     if ($player->isOp()) {
                         return true;
                     } else {
-                        MessageThrottling::send($sender, TextFormat::RED . Main::getInstance()->getMessage("commandAtOpOnly"), true);
+                        $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("commandAtOpOnly"));
                         return false;
                     }
                 } else {
                     return true;
                 }
             } else {
-                MessageThrottling::send($sender, TextFormat::RED . Main::getInstance()->getMessage("commandAtConsole"), true);
+                $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("commandAtConsole"));
                 return false;
             }
         } else {
             if ($receiver->isAllowConsole()) {
                 return true;
             } else {
-                MessageThrottling::send($sender, TextFormat::RED . Main::getInstance()->getMessage("commandAtPlayer"), true);
+                $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("commandAtPlayer"));
                 return false;
             }
         }

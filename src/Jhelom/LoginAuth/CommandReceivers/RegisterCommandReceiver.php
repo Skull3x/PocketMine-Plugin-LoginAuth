@@ -5,7 +5,6 @@ namespace Jhelom\LoginAuth\CommandReceivers;
 use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
-use Jhelom\LoginAuth\MessageThrottling;
 use pocketmine\command\CommandSender;
 use pocketmine\utils\TextFormat;
 
@@ -54,7 +53,7 @@ class RegisterCommandReceiver implements ICommandReceiver
         $password = array_shift($args) ?? "";
 
         if ($this->tryRegister($sender, $password)) {
-            MessageThrottling::send($sender, TextFormat::YELLOW . Main::getInstance()->getMessage("registerConfirm"));
+            $sender->sendMessage(TextFormat::YELLOW . Main::getInstance()->getMessage("registerConfirm"));
             $invoker->getHookQueue()->enqueue([$this, "execute2"], $sender, $password);
         }
     }
@@ -66,12 +65,12 @@ class RegisterCommandReceiver implements ICommandReceiver
         Main::getInstance()->getLogger()->debug("register: execute2: " . $password . " = " . $data);
 
         if ($data !== $password) {
-            MessageThrottling::send($sender, TextFormat::YELLOW . Main::getInstance()->getMessage(("registerConfirmError")));
+            $sender->sendMessage(TextFormat::YELLOW . Main::getInstance()->getMessage(("registerConfirmError")));
             return;
         }
 
         if ($this->register($sender, $password)) {
-            MessageThrottling::send($sender, TextFormat::GREEN . Main::getInstance()->getMessage("registerSuccessful"));
+            $sender->sendMessage(TextFormat::GREEN . Main::getInstance()->getMessage("registerSuccessful"));
         }
     }
 
@@ -86,7 +85,7 @@ class RegisterCommandReceiver implements ICommandReceiver
 
         // 既にログイン認証済みの場合
         if (Main::getInstance()->isAuthenticated($player)) {
-            MessageThrottling::send($player, TextFormat::RED . Main::getInstance()->getMessage("loginAlready"));
+            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("loginAlready"));
             return false;
         }
 
@@ -95,7 +94,7 @@ class RegisterCommandReceiver implements ICommandReceiver
 
         // 同じ名前のアカウントが存在する場合
         if (!$account->isNull) {
-            MessageThrottling::send($player, TextFormat::RED . Main::getInstance()->getMessage("registerExists", ["name" => $player->getName()]));
+            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("registerExists", ["name" => $player->getName()]));
             return false;
         }
 
@@ -127,9 +126,9 @@ class RegisterCommandReceiver implements ICommandReceiver
             // 名前一覧をカンマで連結
             $nameListStr = $name = implode(",", $nameList);
 
-            MessageThrottling::send($player, TextFormat::RED . Main::getInstance()->getMessage("accountSlotOver1", ["accountSlot" => $accountSlot]));
-            MessageThrottling::send($player, TextFormat::RED . Main::getInstance()->getMessage("accountSlotOver2"));
-            MessageThrottling::send($player, TextFormat::RED . $nameListStr);
+            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("accountSlotOver1", ["accountSlot" => $accountSlot]));
+            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("accountSlotOver2"));
+            $sender->sendMessage(TextFormat::RED . $nameListStr);
 
             return false;
         }
@@ -164,7 +163,7 @@ class RegisterCommandReceiver implements ICommandReceiver
         // セキュリティスタンプマネージャーに登録
         Main::getInstance()->getSecurityStampManager()->add($player);
 
-        MessageThrottling::send($player, TextFormat::GREEN . Main::getInstance()->getMessage("registerSuccessful"));
+        $sender->sendMessage(TextFormat::GREEN . Main::getInstance()->getMessage("registerSuccessful"));
 
         return true;
     }

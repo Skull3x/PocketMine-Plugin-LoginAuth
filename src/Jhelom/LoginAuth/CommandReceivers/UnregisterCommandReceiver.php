@@ -5,7 +5,6 @@ namespace Jhelom\LoginAuth\CommandReceivers;
 use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
-use Jhelom\LoginAuth\MessageThrottling;
 use pocketmine\command\CommandSender;
 use pocketmine\utils\TextFormat;
 
@@ -51,7 +50,7 @@ class UnregisterCommandReceiver implements ICommandReceiver
 
         if ($this->tryUnregister($sender, $targetPlayerName)) {
             $msg = TextFormat::YELLOW . Main::getInstance()->getMessage("unregisterConfirm", ["name" => $targetPlayerName]);
-            MessageThrottling::send($sender, $msg);
+            $sender->sendMessage($msg);
             $invoker->getHookQueue()->enqueue([$this, "execute2"], $sender, $targetPlayerName);
 
         }
@@ -64,7 +63,7 @@ class UnregisterCommandReceiver implements ICommandReceiver
         if ($input === "y") {
             $this->unregister($sender, $data);
         } else {
-            MessageThrottling::send($sender, TextFormat::YELLOW . Main::getInstance()->getMessage("unregisterCancel"));
+            $sender->sendMessage(TextFormat::YELLOW . Main::getInstance()->getMessage("unregisterCancel"));
         }
     }
 
@@ -74,8 +73,8 @@ class UnregisterCommandReceiver implements ICommandReceiver
     public function tryUnregister(CommandSender $sender, string $targetPlayerName) : bool
     {
         if ($targetPlayerName === "") {
-            MessageThrottling::send($sender, TextFormat::RED . Main::getInstance()->getMessage("unregisterRequired", ["name" => $targetPlayerName]));
-            MessageThrottling::send($sender, TextFormat::RED . Main::getInstance()->getMessage("authUsage2"));
+            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("unregisterRequired", ["name" => $targetPlayerName]));
+            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("authUsage2"));
             return false;
         }
 
@@ -84,7 +83,7 @@ class UnregisterCommandReceiver implements ICommandReceiver
 
         // アカウントが不在の場合
         if ($account->isNull) {
-            MessageThrottling::send($sender, TextFormat::RED . Main::getInstance()->getMessage("unregisterNotFound", ["name" => $targetPlayerName]));
+            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("unregisterNotFound", ["name" => $targetPlayerName]));
             return false;
         }
 
@@ -105,7 +104,7 @@ class UnregisterCommandReceiver implements ICommandReceiver
 
         // アカウントが不在の場合
         if ($account->isNull) {
-            MessageThrottling::send($sender, TextFormat::RED . Main::getInstance()->getMessage("unregisterNotFound"));
+            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("unregisterNotFound"));
             return false;
         }
 
@@ -116,7 +115,7 @@ class UnregisterCommandReceiver implements ICommandReceiver
         $stmt->execute();
 
         // 削除完了メッセージを表示
-        MessageThrottling::send($sender, TextFormat::GREEN . Main::getInstance()->getMessage("unregisterSuccessful", ["name" => $targetPlayerName]));
+        $sender->sendMessage(TextFormat::GREEN . Main::getInstance()->getMessage("unregisterSuccessful", ["name" => $targetPlayerName]));
 
         // プレイヤーを取得
         $player = Main::getInstance()->getServer()->getPlayer($targetPlayerName);
