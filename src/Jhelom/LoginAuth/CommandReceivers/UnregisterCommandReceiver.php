@@ -6,7 +6,6 @@ use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
 use pocketmine\command\CommandSender;
-use pocketmine\utils\TextFormat;
 
 class UnregisterCommandReceiver implements ICommandReceiver
 {
@@ -42,28 +41,41 @@ class UnregisterCommandReceiver implements ICommandReceiver
         return true;
     }
 
+    /*
+     * 実行
+     */
     public function execute(CommandInvoker $invoker, CommandSender $sender, array $args)
     {
         Main::getInstance()->getLogger()->debug("UnregisterCommandReceiver.execute: ");
 
+        // 削除対象プレイヤー名を取得
         $targetPlayerName = array_shift($args) ?? "";
 
+        // 削除可能か検証
         if ($this->tryUnregister($sender, $targetPlayerName)) {
-            $msg = TextFormat::YELLOW . Main::getInstance()->getMessage("unregisterConfirm", ["name" => $targetPlayerName]);
-            $sender->sendMessage($msg);
+            // 削除可能なら
+            Main::getInstance()->sendMessageResource($sender, "unregisterConfirm", ["name" => $targetPlayerName]);
+
+            // イベントフックを追加
             $invoker->getHookQueue()->enqueue([$this, "execute2"], $sender, $targetPlayerName);
 
         }
     }
 
+    /*
+     * 削除
+     */
     public function execute2(CommandInvoker $invoker, CommandSender $sender, array $args, $data)
     {
+        // 確認入力を取得
         $input = strtolower(array_shift($args) ?? "");
 
+        // Yなら
         if ($input === "y") {
+            // 実際に削除
             $this->unregister($sender, $data);
         } else {
-            $sender->sendMessage(TextFormat::YELLOW . Main::getInstance()->getMessage("unregisterCancel"));
+            Main::getInstance()->sendMessageResource($sender, "unregisterCancel");
         }
     }
 
@@ -73,8 +85,10 @@ class UnregisterCommandReceiver implements ICommandReceiver
     public function tryUnregister(CommandSender $sender, string $targetPlayerName) : bool
     {
         if ($targetPlayerName === "") {
-            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("unregisterRequired", ["name" => $targetPlayerName]));
-            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("authUsage2"));
+            Main::getInstance()->sendMessageResource($sender,
+                ["unregisterRequired", "authUsage2"],
+                ["name" => $targetPlayerName]);
+
             return false;
         }
 
@@ -83,7 +97,7 @@ class UnregisterCommandReceiver implements ICommandReceiver
 
         // アカウントが不在の場合
         if ($account->isNull) {
-            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("unregisterNotFound", ["name" => $targetPlayerName]));
+            Main::getInstance()->sendMessageResource($sender, "unregisterNotFound", ["name" => $targetPlayerName]);
             return false;
         }
 
@@ -104,7 +118,7 @@ class UnregisterCommandReceiver implements ICommandReceiver
 
         // アカウントが不在の場合
         if ($account->isNull) {
-            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("unregisterNotFound"));
+            Main::getInstance()->sendMessageResource($sender, "unregisterNotFound");
             return false;
         }
 
@@ -115,17 +129,18 @@ class UnregisterCommandReceiver implements ICommandReceiver
         $stmt->execute();
 
         // 削除完了メッセージを表示
-        $sender->sendMessage(TextFormat::GREEN . Main::getInstance()->getMessage("unregisterSuccessful", ["name" => $targetPlayerName]));
+        Main::getInstance()->sendMessageResource($sender, "unregisterSuccessful", ["name" => $targetPlayerName]);
 
         // プレイヤーを取得
         $player = Main::getInstance()->getServer()->getPlayer($targetPlayerName);
 
+        // プレイヤーを強制ログアウト
         // プレイヤーが存在している場合
         if ($player !== NULL) {
             // プレイヤーがオンラインの場合
             if ($player->isOnline()) {
                 // セキュリティスタンプマネージャーから削除
-                Main::getInstance()->getSecurityStampManager()->remove($player);
+                Main::getInstance()->getLoginCache()->remove($player);
 
                 // プレイヤーを強制ログアウト
                 $player->close("", Main::getInstance()->getMessage("unregisterSuccessful", ["name" => $targetPlayerName]));

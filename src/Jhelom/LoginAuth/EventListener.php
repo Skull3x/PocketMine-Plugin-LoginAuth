@@ -24,7 +24,6 @@ use pocketmine\event\player\PlayerQuitEvent;
 use pocketmine\event\server\ServerCommandEvent;
 use pocketmine\inventory\InventoryHolder;
 use pocketmine\Player;
-use pocketmine\utils\TextFormat;
 
 /*
  * イベントリスナー
@@ -32,7 +31,7 @@ use pocketmine\utils\TextFormat;
 
 class EventListener implements Listener
 {
-    const INTERVAL_SECONDS = 5;
+    const INTERVAL_SECONDS = 7;
 
     // メイン
     private $main;
@@ -62,7 +61,33 @@ class EventListener implements Listener
     {
         $this->main->getLogger()->debug("onPlayerCommand: " . $event->getPlayer()->getName());
 
+        // インボーカーでコマンドを処理
         $this->invoker->invokePlayerCommand($event);
+
+        // コマンドプレフィックスが付いていない場合
+        if (strpos($event->getMessage(), "/") !== 0) {
+            return;
+        }
+
+        // イベントがキャンセルされている場合
+        if ($event->isCancelled()) {
+            return;
+        }
+
+        // プレイヤーを取得
+        $player = $event->getPlayer();
+
+        // ログイン認証されている場合
+        if ($this->main->isAuthenticated($player)) {
+            return;
+        }
+
+        // 「ログイン認証しないとコマンドは実行できません」メッセージを表示
+        $player->sendMessage($this->main->getMessage("commandNeedAuth"));
+        $this->needAuthMessage($player);
+
+        // イベントをキャンセル
+        $event->setCancelled(true);
     }
 
     /*
@@ -126,7 +151,7 @@ class EventListener implements Listener
         // 認証済みなら
         if ($this->main->isAuthenticated($player)) {
             // ログイン認証済みメッセージ表示
-            $player->sendMessage(TextFormat::GREEN . $this->main->getMessage("loginAlready"));
+            $player->sendMessage($this->main->getMessage("loginAlready"));
         } else {
             // ログインまたはアカウント登録してくれメッセージを表示
             $this->needAuthMessage($player, true);
@@ -309,32 +334,48 @@ class EventListener implements Listener
 
     /*
      *　ログインまたはアカウント登録を催促するメッセージを表示
+     * 短時間に連続表示のうっとうしさ抑制するために一定時間経過後の表示するようにする
      */
     private function needAuthMessage(Player $player, bool $immediate = false)
     {
         $key = $player->getRawUniqueId();
+
+        // 現在日時を取得
         $now = new \DateTime();
 
+        // 強制フラグが立っていた場合
+        if ($immediate) {
+            // 最終表示時刻の履歴を削除
+            unset($this->lastSendMessageTime[$key]);
+        }
+
+        // キーが存在する場合
         if (array_key_exists($key, $this->lastSendMessageTime)) {
+            // 最終表示時刻を履歴から主tく
             $lastTime = $this->lastSendMessageTime[$key];
+
+            // 時差を取得
             $interval = $now->diff($lastTime, true);
 
-            if ($interval->s >= self::INTERVAL_SECONDS) {
+            // 時差が一定時間経過後の場合
+            if ($interval->s <= self::INTERVAL_SECONDS) {
+                // 何もしないでリターン
                 return;
             }
         }
 
+        // 最終表示時刻の履歴を更新
         $this->lastSendMessageTime[$key] = $now;
 
         // アカウント登録状態に応じて表示するメッセージを切り替える
         if ($this->main->isRegistered($player)) {
             // ログインしてもらうメッセージ
-            $player->sendMessage(TextFormat::YELLOW . $this->main->getMessage("login"));
-            $player->sendMessage(TextFormat::YELLOW . $this->main->getMessage("loginUsage"));
+            $player->sendMessage($this->main->getMessage("login"));
+            $player->sendMessage($this->main->getMessage("loginUsage"));
         } else {
             // 未登録ならアカウント登録してもらうメッセージ
-            $player->sendMessage(TextFormat::YELLOW . $this->main->getMessage("register"));
-            $player->sendMessage(TextFormat::YELLOW . $this->main->getMessage("registerUsage"));
+            $player->sendMessage($this->main->getMessage("register"));
+            $player->sendMessage($this->main->getMessage("registerUsage"));
         }
     }
 }

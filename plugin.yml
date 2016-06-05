@@ -3,7 +3,7 @@ main: Jhelom\LoginAuth\Main
 version: "1.0"
 api: [2.0.0]
 load: STARTUP
-author: Jhelom
+author: Jhelom & Dragon7
 description: ログイン認証
 website: https://github.com/jhelom/PocketMine-Plugin-LoginAuth
 
@@ -15,6 +15,6 @@ commands:
     description: "アカウント登録(LoginAuth)"
     usage: "/register <password>"
   auth:
-    description: "アカウント管理(LoginAuth)。アカウント削除など。"
+    description: "アカウント管理(LoginAuth)"
     usage: "/auth <unregister>"
 

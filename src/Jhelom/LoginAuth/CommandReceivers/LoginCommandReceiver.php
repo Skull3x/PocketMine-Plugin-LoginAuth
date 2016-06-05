@@ -2,11 +2,11 @@
 
 namespace Jhelom\LoginAuth\CommandReceivers;
 
+use Jhelom\LoginAuth\Account;
 use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
 use pocketmine\command\CommandSender;
-use pocketmine\utils\TextFormat;
 
 class LoginCommandReceiver implements ICommandReceiver
 {
@@ -51,7 +51,6 @@ class LoginCommandReceiver implements ICommandReceiver
         $this->login($sender, $password);
     }
 
-
     /*
      * ログインする
      */
@@ -62,7 +61,7 @@ class LoginCommandReceiver implements ICommandReceiver
 
         // 既にログイン認証済みの場合
         if (Main::getInstance()->isAuthenticated($player)) {
-            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("loginAlready"));
+            Main::getInstance()->sendMessageResource($sender, "loginAlready");
             return false;
         }
 
@@ -71,30 +70,31 @@ class LoginCommandReceiver implements ICommandReceiver
 
         // アカウントが不在なら
         if ($account->isNull) {
-            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("register"));
+            Main::getInstance()->sendMessageResource($sender, ["register", "registerUsage"]);
             return false;
         }
 
         // 空白文字を除去
         $password = trim($password);
 
-        // パスワードを検証
-        if (!Main::getInstance()->validatePassword($player, $password, Main::getInstance()->getMessage("passwordRequired"))) {
+        // パスワードが未入力の場合
+        if ($password === "") {
+            Main::getInstance()->sendMessageResource($sender, "passwordRequired");
             return false;
         }
 
         // パスワードハッシュを生成
-        $passwordHash = Main::getInstance()->makePasswordHash($password);
+        $passwordHash = Account::makePasswordHash($password);
 
         // パスワードハッシュを比較
         if ($account->passwordHash != $passwordHash) {
             // パスワード不一致メッセージを表示してリターン
-            $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("passwordError"));
+            Main::getInstance()->sendMessageResource($sender, "passwordError");
             return false;
         }
 
         // データベースのセキュリティスタンプを更新
-        $securityStamp = Main::getInstance()->getSecurityStampManager()->makeStamp($player);
+        $securityStamp = Account::makeSecurityStamp($player);
         $name = strtolower($player->getName());
 
         $sql = "UPDATE account SET securityStamp = :securityStamp WHERE name = :name";
@@ -104,10 +104,10 @@ class LoginCommandReceiver implements ICommandReceiver
         $stmt->execute();
 
         // セキュリティスタンプマネージャーに登録
-        Main::getInstance()->getSecurityStampManager()->add($player);
+        Main::getInstance()->getLoginCache()->add($player);
 
         // ログイン成功メッセージを表示
-        $sender->sendMessage(TextFormat::GREEN . Main::getInstance()->getMessage("loginSuccessful"));
+        Main::getInstance()->sendMessageResource($sender, "loginSuccessful");
 
         return true;
     }

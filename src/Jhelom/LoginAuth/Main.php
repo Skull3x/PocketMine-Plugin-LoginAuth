@@ -7,7 +7,6 @@ use pocketmine\level;
 use pocketmine\Player;
 use pocketmine\plugin\PluginBase;
 use pocketmine\utils\Config;
-use pocketmine\utils\TextFormat;
 
 class Main extends PluginBase
 {
@@ -20,8 +19,8 @@ class Main extends PluginBase
     // メッセージリソース
     private $messageResource;
 
-    // セキュリティスタンプマネージャー
-    private $securityStampManager;
+    // ログインキャッシュ
+    private $loginCache;
 
     // データベース初期化SQL
     private $ddl = <<<_SQL_
@@ -34,6 +33,8 @@ CREATE TABLE [account] (
 PRIMARY KEY(name)
 );                
 _SQL_;
+
+    public $isPlayerMoving = false;
 
     private static $instance;
 
@@ -58,11 +59,14 @@ _SQL_;
         // 設定をリロード
         $this->reloadConfig();
 
+        // ログイン認証前にプレイヤーの移動を許可するどうかの設定を取得
+        $this->isPlayerMoving = $this->getConfig()->get("playerMoving") ?? false;
+
         // メッセージリソースをロード
         $this->loadMessageResource($this->getConfig()->get("locale"));
 
-        // セキュリティスタンプマネージャーを初期化
-        $this->securityStampManager = new SecurityStampManager();
+        // ログインキャッシュを初期化
+        $this->loginCache = new LoginCache();
 
         // データベースに接続
         $this->openDatabase();
@@ -105,19 +109,28 @@ _SQL_;
         $this->messageResource = new Config($path, Config::YAML);
     }
 
-    public function getMessageList(array $keyList, string $prefix = "", array $args = NULL) : string
+    /*
+     * メッセージリソースを送信する
+     *
+     * 単一のメッセージを送信する場合は keys に　string を渡す
+     * 複数のメッセージを送信する場合は keys に array を渡す
+     */
+    public function sendMessageResource(CommandSender $sender, $keys, array $args = NULL)
     {
-        $strList = [];
-
-        foreach ($keyList as $key) {
-            array_push($strList, $prefix . $this->getMessage($key, $args));
+        // keys が配列ではない場合
+        if (!is_array($keys)) {
+            // 配列に変換
+            $keys = [$keys];
         }
 
-        return implode(PHP_EOL, $strList);
+        // keys をループ
+        foreach ($keys as $key) {
+            $sender->sendMessage($this->getMessage($key, $args));
+        }
     }
 
     /*
-     * メッセージを取得
+     * メッセージリソースを取得
      *
      * 引数 args に連想配列を渡すとメッセージの文字列中にプレースフォルダ（波括弧）を置換する
      */
@@ -176,9 +189,9 @@ _SQL_;
     /*
      * セキュリティスタンプマネージャーを取得
      */
-    public function getSecurityStampManager() : SecurityStampManager
+    public function getLoginCache() : LoginCache
     {
-        return $this->securityStampManager;
+        return $this->loginCache;
     }
 
     /*
@@ -259,7 +272,7 @@ _SQL_;
     public function isAuthenticated(Player $player) :bool
     {
         // キャッシュを検証
-        if ($this->getSecurityStampManager()->validate($player)) {
+        if ($this->getLoginCache()->validate($player)) {
             // 認証済みを示す true を返す
             return true;
         }
@@ -273,61 +286,13 @@ _SQL_;
         }
 
         // データベースのセキュリティスタンプと比較して違っている
-        if ($account->securityStamp !== $this->getSecurityStampManager()->makeStamp($player)) {
+        if ($account->securityStamp !== Account::makeSecurityStamp($player)) {
             return false;
         }
 
         // キャッシュに登録
-        $this->getSecurityStampManager()->add($player);
+        $this->getLoginCache()->add($player);
         return true;
-    }
-
-    /*
-     * パスワードを検証、成功なら true、失敗なら false を返す
-     */
-    public function validatePassword(Player $player, string $password, string $emptyErrorMessage) : bool
-    {
-        // パスワードが空欄の場合
-        if ($password === "") {
-            $player->sendMessage(TextFormat::RED . $emptyErrorMessage);
-            return false;
-        }
-
-        if (!preg_match("/^[a-zA-Z0-9]+$/", $password)) {
-            $player->sendMessage(TextFormat::RED . $this->getMessage("passwordFormat"));
-            return false;
-        }
-
-        // 設定ファイルからパスワードの文字数の下限を取得
-        $passwordLengthMin = $this->getConfig()->get("passwordLengthMin");
-
-        // 設定ファイルからパスワードの文字数の上限を取得
-        $passwordLengthMax = $this->getConfig()->get("passwordLengthMax");
-
-        // パスワードの文字数を取得
-        $passwordLength = strlen($password);
-
-        // パスワードが短い場合
-        if ($passwordLength < $passwordLengthMin) {
-            $player->sendMessage(TextFormat::RED . $this->getMessage("passwordLengthMin", ["length" => $passwordLengthMin]));
-            return false;
-        }
-
-        // パスワードが長い場合
-        if ($passwordLength > $passwordLengthMax) {
-            $player->sendMessage(TextFormat::RED . $this->getMessage("passwordLengthMax", ["length" => $passwordLengthMax]));
-            return false;
-        }
-
-        return true;
-    }
-
-    /*
-     * パスワードハッシュを生成する
-     */
-    public function makePasswordHash(string $password) : string
-    {
-        return hash("sha256", $password);
     }
 
     /*
