@@ -12,6 +12,7 @@ use pocketmine\Player;
 /*
  * アカウント登録
  */
+
 class RegisterCommandReceiver implements ICommandReceiver
 {
     /*
@@ -51,41 +52,15 @@ class RegisterCommandReceiver implements ICommandReceiver
      */
     public function execute(CommandInvoker $invoker, CommandSender $sender, array $args)
     {
-        $password = array_shift($args) ?? "";
+        $password = trim(array_shift($args) ?? "");
 
-        if ($this->tryRegister($sender, $password)) {
-            Main::getInstance()->sendMessageResource($sender, "registerConfirm");
-            $invoker->getHookQueue()->enqueue([$this, "execute2"], $sender, $password);
-        }
-    }
-
-    public function execute2(CommandInvoker $invoker, CommandSender $sender, array $args, $data)
-    {
-        Main::getInstance()->getLogger()->debug("register: execute2: ");
-
-        $password = array_shift($args) ?? "";
-
-        if ($data !== $password) {
-            Main::getInstance()->sendMessageResource($sender, "registerConfirmError");
-            return;
-        }
-
-        $this->register($sender, $password);
-    }
-
-    /*
-    * アカウント登録が可能か検証して、成功なら true を返す
-    * （データベースへの反映は行わない）
-    */
-    public function tryRegister(CommandSender $sender, string $password) : bool
-    {
         // Playerクラスにキャスト
         $player = Main::getInstance()->castCommandSenderToPlayer($sender);
 
         // 既にログイン認証済みの場合
         if (Main::getInstance()->isAuthenticated($player)) {
             Main::getInstance()->sendMessageResource($sender, "loginAlready");
-            return false;
+            return;
         }
 
         // アカウントを検索
@@ -94,36 +69,45 @@ class RegisterCommandReceiver implements ICommandReceiver
         // 同じ名前のアカウントが存在する場合
         if (!$account->isNull) {
             Main::getInstance()->sendMessageResource($sender, "registerExists", ["name" => $player->getName()]);
-            return false;
+            return;
         }
 
         // 名前が不適合の場合
         if ($this->isInvalidName($player)) {
-            return false;
+            return;
         }
 
         // パスワードが不適合の場合
         if ($this->isInvalidPassword($player, $password)) {
-            return false;
+            return;
         }
 
         // 端末毎アカウント数が不適合の場合
         if ($this->isInvalidAccountSlot($player)) {
-            return false;
+            return;
         }
 
-        return true;
+        // 「確認のためもう一度パスワードを入力して」メッセージを表示
+        Main::getInstance()->sendMessageResource($sender, "registerConfirm");
+
+        // コマンドフックを登録
+        $invoker->getHookQueue()->enqueue([$this, "execute2"], $sender, $password);
     }
 
     /*
-     * アカウントをデータベースに登録する
-     *
-     * 成功なら true を返す
+     * データベースにアカウントを登録する
      */
-    public function register(CommandSender $sender, string $password) :bool
+    public function execute2(CommandInvoker $invoker, CommandSender $sender, array $args, $data)
     {
-        if (!$this->tryRegister($sender, $password)) {
-            return false;
+        Main::getInstance()->getLogger()->debug("register: execute2: ");
+
+        // 確認用パスワードを引数から取得
+        $password = trim(array_shift($args) ?? "");
+
+        // 確認用パスワードが違う場合
+        if ($data !== $password) {
+            Main::getInstance()->sendMessageResource($sender, "registerConfirmError");
+            return;
         }
 
         // Playerクラスにキャスト
@@ -139,12 +123,11 @@ class RegisterCommandReceiver implements ICommandReceiver
         $stmt->bindValue(":securityStamp", Account::makeSecurityStamp($player), \PDO::PARAM_STR);
         $stmt->execute();
 
-        // セキュリティスタンプマネージャーに登録
+        // ログインキャッシュに登録
         Main::getInstance()->getLoginCache()->add($player);
 
+        // アカウント登録成功メッセージを表示
         Main::getInstance()->sendMessageResource($player, "registerSuccessful", ["password" => $password]);
-
-        return true;
     }
 
     /*

@@ -51,15 +51,28 @@ class UnregisterCommandReceiver implements ICommandReceiver
         // 削除対象プレイヤー名を取得
         $targetPlayerName = array_shift($args) ?? "";
 
-        // 削除可能か検証
-        if ($this->tryUnregister($sender, $targetPlayerName)) {
-            // 削除可能なら
-            Main::getInstance()->sendMessageResource($sender, "unregisterConfirm", ["name" => $targetPlayerName]);
+        if ($targetPlayerName === "") {
+            Main::getInstance()->sendMessageResource($sender,
+                ["unregisterRequired", "authUsage2"],
+                ["name" => $targetPlayerName]);
 
-            // イベントフックを追加
-            $invoker->getHookQueue()->enqueue([$this, "execute2"], $sender, $targetPlayerName);
-
+            return;
         }
+
+        // アカウントを検索
+        $account = Main::getInstance()->findAccountByName($targetPlayerName);
+
+        // アカウントが不在の場合
+        if ($account->isNull) {
+            Main::getInstance()->sendMessageResource($sender, "unregisterNotFound", ["name" => $targetPlayerName]);
+            return;
+        }
+
+        // 確認入力してくれメッセージを表示
+        Main::getInstance()->sendMessageResource($sender, "unregisterConfirm", ["name" => $targetPlayerName]);
+
+        // コマンドフックを追加
+        $invoker->getHookQueue()->enqueue([$this, "execute2"], $sender, $targetPlayerName);
     }
 
     /*
@@ -70,48 +83,14 @@ class UnregisterCommandReceiver implements ICommandReceiver
         // 確認入力を取得
         $input = strtolower(array_shift($args) ?? "");
 
-        // Yなら
-        if ($input === "y") {
-            // 実際に削除
-            $this->unregister($sender, $data);
-        } else {
+        // Y以外の場合
+        if ($input !== "y") {
             Main::getInstance()->sendMessageResource($sender, "unregisterCancel");
-        }
-    }
-
-    /*
-     * アカウント削除が可能か検証する（データベースへの反映は行わない）
-     */
-    public function tryUnregister(CommandSender $sender, string $targetPlayerName) : bool
-    {
-        if ($targetPlayerName === "") {
-            Main::getInstance()->sendMessageResource($sender,
-                ["unregisterRequired", "authUsage2"],
-                ["name" => $targetPlayerName]);
-
-            return false;
+            return;
         }
 
-        // アカウントを検索
-        $account = Main::getInstance()->findAccountByName($targetPlayerName);
-
-        // アカウントが不在の場合
-        if ($account->isNull) {
-            Main::getInstance()->sendMessageResource($sender, "unregisterNotFound", ["name" => $targetPlayerName]);
-            return false;
-        }
-
-        return true;
-    }
-
-    /*
-     * アカウントを削除する
-     */
-    public function unregister(CommandSender $sender, string $targetPlayerName) :bool
-    {
-        if (!$this->tryUnregister($sender, $targetPlayerName)) {
-            return false;
-        }
+        // 削除対象プレイヤー名をコマンドフックのデータから取得
+        $targetPlayerName = $data;
 
         // アカウントを検索
         $account = Main::getInstance()->findAccountByName($targetPlayerName);
@@ -119,7 +98,7 @@ class UnregisterCommandReceiver implements ICommandReceiver
         // アカウントが不在の場合
         if ($account->isNull) {
             Main::getInstance()->sendMessageResource($sender, "unregisterNotFound");
-            return false;
+            return;
         }
 
         // データベースから削除
@@ -131,23 +110,25 @@ class UnregisterCommandReceiver implements ICommandReceiver
         // 削除完了メッセージを表示
         Main::getInstance()->sendMessageResource($sender, "unregisterSuccessful", ["name" => $targetPlayerName]);
 
+        // 以下プレイヤーを強制ログアウトする処理
+
         // プレイヤーを取得
         $player = Main::getInstance()->getServer()->getPlayer($targetPlayerName);
 
-        // プレイヤーを強制ログアウト
-        // プレイヤーが存在している場合
-        if ($player !== NULL) {
-            // プレイヤーがオンラインの場合
-            if ($player->isOnline()) {
-                // セキュリティスタンプマネージャーから削除
-                Main::getInstance()->getLoginCache()->remove($player);
-
-                // プレイヤーを強制ログアウト
-                $player->close("", Main::getInstance()->getMessage("unregisterSuccessful", ["name" => $targetPlayerName]));
-            }
+        // プレイヤー不在している場合
+        if ($player === NULL) {
+            return;
         }
 
-        return true;
-    }
+        // プレイヤーがオンラインではない場合
+        if (!$player->isOnline()) {
+            return;
+        }
 
+        // ログインキャッシュから削除
+        Main::getInstance()->getLoginCache()->remove($player);
+
+        // プレイヤーを強制ログアウト
+        $player->close("", Main::getInstance()->getMessage("unregisterSuccessful", ["name" => $targetPlayerName]));
+    }
 }

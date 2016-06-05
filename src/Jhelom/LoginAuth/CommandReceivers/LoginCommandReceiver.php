@@ -8,6 +8,9 @@ use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
 use pocketmine\command\CommandSender;
 
+/*
+ * ログイン
+ */
 class LoginCommandReceiver implements ICommandReceiver
 {
     /*
@@ -47,22 +50,16 @@ class LoginCommandReceiver implements ICommandReceiver
      */
     public function execute(CommandInvoker $invoker, CommandSender $sender, array $args)
     {
-        $password = array_shift($args) ?? "";
-        $this->login($sender, $password);
-    }
+        // 引数からパスワードを取得
+        $password = trim(array_shift($args) ?? "");
 
-    /*
-     * ログインする
-     */
-    public function login(CommandSender $sender, string $password):bool
-    {
         // Playerクラスにキャスト
         $player = Main::castCommandSenderToPlayer($sender);
 
         // 既にログイン認証済みの場合
         if (Main::getInstance()->isAuthenticated($player)) {
             Main::getInstance()->sendMessageResource($sender, "loginAlready");
-            return false;
+            return;
         }
 
         // アカウントを検索
@@ -71,16 +68,13 @@ class LoginCommandReceiver implements ICommandReceiver
         // アカウントが不在なら
         if ($account->isNull) {
             Main::getInstance()->sendMessageResource($sender, ["register", "registerUsage"]);
-            return false;
+            return;
         }
-
-        // 空白文字を除去
-        $password = trim($password);
 
         // パスワードが未入力の場合
         if ($password === "") {
             Main::getInstance()->sendMessageResource($sender, "passwordRequired");
-            return false;
+            return;
         }
 
         // パスワードハッシュを生成
@@ -90,27 +84,20 @@ class LoginCommandReceiver implements ICommandReceiver
         if ($account->passwordHash != $passwordHash) {
             // パスワード不一致メッセージを表示してリターン
             Main::getInstance()->sendMessageResource($sender, "passwordError");
-            return false;
+            return;
         }
 
         // データベースのセキュリティスタンプを更新
-        $securityStamp = Account::makeSecurityStamp($player);
-        $name = strtolower($player->getName());
-
         $sql = "UPDATE account SET securityStamp = :securityStamp WHERE name = :name";
         $stmt = Main::getInstance()->preparedStatement($sql);
-        $stmt->bindValue(":name", $name, \PDO::PARAM_STR);
-        $stmt->bindValue(":securityStamp", $securityStamp, \PDO::PARAM_STR);
+        $stmt->bindValue(":name", strtolower($player->getName()), \PDO::PARAM_STR);
+        $stmt->bindValue(":securityStamp", Account::makeSecurityStamp($player), \PDO::PARAM_STR);
         $stmt->execute();
 
-        // セキュリティスタンプマネージャーに登録
+        // ログインキャッシュに登録
         Main::getInstance()->getLoginCache()->add($player);
 
         // ログイン成功メッセージを表示
         Main::getInstance()->sendMessageResource($sender, "loginSuccessful");
-
-        return true;
     }
-
-
 }
