@@ -297,22 +297,6 @@ _SQL_;
     }
 
     /*
-     * CommandSender が Player なら true を返す
-     */
-    public static function isPlayer(CommandSender $sender) : bool
-    {
-        return $sender instanceof Player;
-    }
-
-    /*
-     * CommandSender が Player でなければ true を返す
-     */
-    public static function isNotPlayer(CommandSender $sender) : bool
-    {
-        return !self::isPlayer($sender);
-    }
-
-    /*
      * CommandSender（基底クラス） を Player（派生クラス）に（タイプヒンティングで疑似的で）ダウンキャストする
      */
     public static function castCommandSenderToPlayer(CommandSender $sender) : Player

@@ -5,6 +5,7 @@ namespace Jhelom\LoginAuth;
 use pocketmine\command\CommandSender;
 use pocketmine\event\player\PlayerCommandPreprocessEvent;
 use pocketmine\event\server\ServerCommandEvent;
+use pocketmine\Player;
 use pocketmine\Server;
 
 /*
@@ -115,7 +116,7 @@ class CommandInvoker
     private function checkPermission(CommandSender $sender, ICommandReceiver $receiver) : bool
     {
         // プレイヤーの場合
-        if (Main::isPlayer($sender)) {
+        if ($sender instanceof Player) {
             // プレイヤー実行権限がある場合
             if ($receiver->isAllowPlayer()) {
                 $player = Main::castCommandSenderToPlayer($sender);
