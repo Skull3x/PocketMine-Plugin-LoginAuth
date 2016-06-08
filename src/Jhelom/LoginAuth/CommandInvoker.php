@@ -73,6 +73,7 @@ class CommandInvoker
     {
         $hook = CommandHookManager::getInstance()->dequeue($sender);
 
+        // フックがある場合
         if (!$hook->isNull) {
             Main::getInstance()->getLogger()->debug("call hook");
             call_user_func($hook->callback, $this, $sender, $args, $hook->data);
@@ -117,10 +118,19 @@ class CommandInvoker
     {
         // プレイヤーの場合
         if ($sender instanceof Player) {
-            // プレイヤー実行権限がある場合
+            // プレイヤー実行許可がある場合
             if ($receiver->isAllowPlayer()) {
                 $player = Main::castCommandSenderToPlayer($sender);
-                // OPのみ実行権限がある場合
+
+                // 認証済みの場合のみ実行許可
+                if ($receiver->isAllowAuthenticated()) {
+                    if (!Main::getInstance()->isAuthenticated($player)) {
+                        Main::getInstance()->sendMessageResource($player, "commandNeedAuth");
+                        return false;
+                    }
+                }
+
+                // OPのみ実行許可がある場合
                 if ($receiver->isAllowOpOnly()) {
                     // プレイヤーがOPの場合
                     if ($player->isOp()) {

@@ -26,11 +26,11 @@ class Main extends PluginBase
     private $databaseSchema = <<<_SQL_
 CREATE TABLE [account] (
 [name] TEXT NOT NULL UNIQUE,
-[clientId] TEXT NOT NULL,
-[ip] TEXT NOT NULL,
+[clientId] TEXT,
+[ip] TEXT,
 [passwordHash] TEXT NOT NULL,
-[securityStamp] TEXT NOT NULL,
-[lastLoginTime] TEXT NOT NULL,
+[securityStamp] TEXT,
+[lastLoginTime] TEXT,
 PRIMARY KEY(name)
 );                
 _SQL_;
@@ -52,6 +52,7 @@ _SQL_;
     public function onEnable()
     {
         $this->getLogger()->info("§a開発者 Jhelom & Dragon7");
+        $this->getLogger()->info("§ahttps://github.com/jhelom/PocketMine-Plugin-LoginAuth");
 
         // Minecraft プラグインのインスタンスは１つだけ
         self::$instance = $this;
@@ -141,7 +142,7 @@ _SQL_;
 
         if ($message == NULL || $message == "") {
             $this->getLogger()->warning("メッセージリソース不在: " . $key);
-            $message = "";
+            $message = $key;
         }
 
         // args が配列の場合
@@ -237,7 +238,7 @@ _SQL_;
      * 端末IDをもとにデータベースからアカウントを検索して、Accountクラスの配列を返す
      * 不在の場合は、空の配列を返す
      */
-    public function findAccountsByClientId(string $clientId) : array
+    public function findAccountListByClientId(string $clientId) : array
     {
         $sql = "SELECT * FROM account WHERE clientId = :clientId ORDER BY name";
         $stmt = $this->preparedStatement($sql);
@@ -303,6 +304,48 @@ _SQL_;
     {
         return $sender;
     }
+
+    /*
+     * パスワードが不適合ならtrueを返す
+    */
+    public function isInvalidPassword(CommandSender $sender, string $password) : bool
+    {
+        // パスワードが空欄の場合
+        if ($password === "") {
+            Main::getInstance()->sendMessageResource($sender, ["passwordRequired", "registerUsage"]);
+            return true;
+        }
+
+        // 使用可能文字の検証
+        if (!preg_match("/^[a-zA-Z0-9!#@]+$/", $password)) {
+            Main::getInstance()->sendMessageResource($sender, "passwordFormat");
+            return true;
+        }
+
+        // 設定ファイルからパスワードの文字数の下限を取得
+        $passwordLengthMin = Main::getInstance()->getConfig()->get("passwordLengthMin");
+
+        // 設定ファイルからパスワードの文字数の上限を取得
+        $passwordLengthMax = Main::getInstance()->getConfig()->get("passwordLengthMax");
+
+        // パスワードの文字数を取得
+        $passwordLength = strlen($password);
+
+        // パスワードが短い場合
+        if ($passwordLength < $passwordLengthMin) {
+            Main::getInstance()->sendMessageResource($sender, "passwordLengthMin", ["length" => $passwordLengthMin]);
+            return true;
+        }
+
+        // パスワードが長い場合
+        if ($passwordLength > $passwordLengthMax) {
+            Main::getInstance()->sendMessageResource($sender, "passwordLengthMax", ["length" => $passwordLengthMax]);
+            return true;
+        }
+
+        return false;
+    }
+
 }
 
 ?>

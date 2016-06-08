@@ -34,6 +34,9 @@ class Account
     // セキュリティスタンプ
     public $securityStamp;
 
+    // 最終ログにン日時（文字列）
+    public $lastLogin;
+
     // データベース不在なら true を示す
     public $isNull;
 

@@ -31,6 +31,11 @@ interface ICommandReceiver
     public function isAllowOpOnly(): bool;
 
     /*
+     * ログイン認証済みの場合のみ実行許可
+     */
+    public function isAllowAuthenticated() : bool;
+
+    /*
      * 実行
      */
     public function execute(CommandInvoker $invoker, CommandSender $sender, array $args);

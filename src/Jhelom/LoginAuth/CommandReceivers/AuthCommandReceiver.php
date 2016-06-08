@@ -21,6 +21,8 @@ class AuthCommandReceiver implements ICommandReceiver
 
         // サブコマンドを登録
         $this->subInvoker->add(new UnregisterCommandReceiver());
+        $this->subInvoker->add(new AddCommandReceiver());
+        $this->subInvoker->add(new ListCommandReceiver());
     }
 
     /*
@@ -52,7 +54,12 @@ class AuthCommandReceiver implements ICommandReceiver
      */
     public function isAllowOpOnly(): bool
     {
-        return true;
+        return false;
+    }
+
+    public function isAllowAuthenticated() : bool
+    {
+        return false;
     }
 
     /*
@@ -61,7 +68,14 @@ class AuthCommandReceiver implements ICommandReceiver
     public function execute(CommandInvoker $invoker, CommandSender $sender, array $args)
     {
         if (!$this->subInvoker->invoke($sender, $args)) {
-            Main::getInstance()->sendMessageResource($sender, ["authUsage", "authUsage2"]);
+            Main::getInstance()->sendMessageResource($sender,
+                [
+                    "authHelp",
+                    "authUsage",
+                    "authUsage2",
+                    "authUsage3",
+                    "authUsage4",
+                ]);
         }
     }
 }
