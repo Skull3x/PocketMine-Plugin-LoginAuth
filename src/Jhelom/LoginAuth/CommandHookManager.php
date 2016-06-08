@@ -6,9 +6,47 @@ namespace Jhelom\LoginAuth;
 use pocketmine\command\CommandSender;
 use pocketmine\Player;
 
-class CommandHookQueue
+/*
+ * コマンドフックのリストを管理する
+ */
+
+class CommandHookManager
 {
     private $list = [];
+
+    /*
+     * コンストラクタ
+     * シングルトンにするために private にして new できないようにする
+     */
+    private function __construct()
+    {
+    }
+
+    // シングルトンのインスタンスを保持
+    private static $instance;
+
+    /*
+     * シングルトンのインスタンスを取得
+     */
+    public static function getInstance() : CommandHookManager
+    {
+        // インスタンスが初期化されていない場合
+        // PHP はシングルスレッドなので排他制御は不要
+        if (self::$instance === NULL) {
+            // インスタンスを初期化
+            self::$instance = new CommandHookManager();
+        }
+
+        return self::$instance;
+    }
+
+    /*
+     * クローンを禁止にする
+     */
+    final function __clone()
+    {
+        throw new \Exception("クローン禁止 " . get_class($this));
+    }
 
     /*
      * キーを生成
@@ -30,7 +68,6 @@ class CommandHookQueue
 
     /*
      * キューが存在すれば true を返す
-     *
      */
     public function exists(CommandSender $player) : bool
     {
@@ -49,7 +86,6 @@ class CommandHookQueue
 
     /*
      * プレイヤーに関連付けされたキーを取り出す。不在の場合は isNull が true の CommandHook を返す
-     *
      */
     public function dequeue(CommandSender $sender) : CommandHook
     {

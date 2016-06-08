@@ -7,14 +7,12 @@ use pocketmine\Player;
 /*
  * アカウント
  */
-
 class Account
 {
     const HASH_ALGORITHM = "sha256";
-    /**
+
+    /*
      * コンストラクタ
-     *
-     * @param bool $isNull
      */
     public function __construct(bool $isNull = false)
     {

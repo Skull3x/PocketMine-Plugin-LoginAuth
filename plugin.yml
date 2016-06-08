@@ -18,3 +18,4 @@ commands:
     description: "アカウント管理(LoginAuth)"
     usage: "/auth <unregister>"
 
+

@@ -5,9 +5,7 @@ namespace Jhelom\LoginAuth;
 use pocketmine\command\CommandSender;
 
 /*
- * コマンドレシーバー
- * 
- * コマンドを処理するインターフェース
+ * コマンドレシーバーのインターフェース
  */
 
 interface ICommandReceiver

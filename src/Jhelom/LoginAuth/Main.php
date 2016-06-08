@@ -23,34 +23,37 @@ class Main extends PluginBase
     private $loginCache;
 
     // データベース初期化SQL
-    private $ddl = <<<_SQL_
+    private $databaseSchema = <<<_SQL_
 CREATE TABLE [account] (
 [name] TEXT NOT NULL UNIQUE,
 [clientId] TEXT NOT NULL,
 [ip] TEXT NOT NULL,
 [passwordHash] TEXT NOT NULL,
 [securityStamp] TEXT NOT NULL,
+[lastLoginTime] TEXT NOT NULL,
 PRIMARY KEY(name)
 );                
 _SQL_;
 
-    public $isPlayerMoving = false;
-
+    // インスタンスを保持
     private static $instance;
 
+    /*
+     * インスタンスを取得
+     */
     public static function getInstance() : Main
     {
         return self::$instance;
     }
 
-    /**
+    /*
      * プラグインが有効化されたときのイベント
      */
     public function onEnable()
     {
-        $this->getLogger()->info("§a 開発者 jhelom & dragon7");
+        $this->getLogger()->info("§a開発者 Jhelom & Dragon7");
 
-        // スタティックに代入
+        // Minecraft プラグインのインスタンスは１つだけ
         self::$instance = $this;
 
         // デフォルト設定をセーブ
@@ -58,9 +61,6 @@ _SQL_;
 
         // 設定をリロード
         $this->reloadConfig();
-
-        // ログイン認証前にプレイヤーの移動を許可するどうかの設定を取得
-        $this->isPlayerMoving = $this->getConfig()->get("playerMoving") ?? false;
 
         // メッセージリソースをロード
         $this->loadMessageResource($this->getConfig()->get("locale"));
@@ -102,8 +102,8 @@ _SQL_;
             $path = $this->getDataFolder() . $file;
         }
 
-        // リソースをセーブ
-        $this->saveResource($file);
+        // リソースをセーブ（上書き）
+        $this->saveResource($file, true);
 
         // リソースをロード
         $this->messageResource = new Config($path, Config::YAML);
@@ -159,7 +159,7 @@ _SQL_;
         return $message;
     }
 
-    /**
+    /*
      * データベースに接続
      */
     private function openDatabase()
@@ -182,7 +182,7 @@ _SQL_;
         // 初期化フラグが立っていたら
         if ($isInitializing) {
             // テーブルを作成
-            $this->pdo->exec($this->ddl);
+            $this->pdo->exec($this->databaseSchema);
         }
     }
 
@@ -292,6 +292,7 @@ _SQL_;
 
         // キャッシュに登録
         $this->getLoginCache()->add($player);
+
         return true;
     }
 

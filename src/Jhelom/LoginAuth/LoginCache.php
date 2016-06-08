@@ -64,7 +64,7 @@ class LoginCache
         // キーを生成
         $key = $this->makeKey($player);
 
-        // スタンプを生成
+        // セキュリティスタンプを生成
         $stamp = Account::makeSecurityStamp($player);
 
         // キャッシュに登録

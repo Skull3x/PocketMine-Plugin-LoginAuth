@@ -6,12 +6,10 @@ use pocketmine\command\CommandSender;
 use pocketmine\event\player\PlayerCommandPreprocessEvent;
 use pocketmine\event\server\ServerCommandEvent;
 use pocketmine\Server;
-use pocketmine\utils\TextFormat;
 
 /*
  * コマンドインボーカー
  */
-
 class CommandInvoker
 {
     // コマンドのプレフィックス
@@ -20,30 +18,16 @@ class CommandInvoker
     // コマンドレシーバーのリスト
     private $list = [];
 
-    // フック
-    private static $hookQueue;
-
     /*
-     * コンストラクタ
+     * コマンドレシーバーを登録
      */
-    public function __construct()
-    {
-    }
-
-    public static function getHookQueue() : CommandHookQueue
-    {
-        if (self::$hookQueue === NULL) {
-            self::$hookQueue = new CommandHookQueue();
-        }
-
-        return self::$hookQueue;
-    }
-
     public function add(ICommandReceiver $receiver)
     {
         $name = strtolower($receiver->getName());
 
+        // 重複登録はプログラムのミスの疑いあり
         if (array_key_exists($name, $this->list)) {
+            // 警告ログを出力
             Server::getInstance()->getLogger()->warning("Dispatcher.add: キー重複 " . $name);
         }
 
@@ -66,7 +50,7 @@ class CommandInvoker
     }
 
     /*
-     * プレイヤーのコマンドを処置
+     * プレイヤーのコマンドを処理
      */
     public function invokePlayerCommand(PlayerCommandPreprocessEvent $event)
     {
@@ -81,12 +65,12 @@ class CommandInvoker
     }
 
     /*
-    * レシーバーを呼び出す
+    * コマンドレシーバーを呼び出す
     * イベントをキャンセルする必要がある場合は　true を返す
     */
     public function invoke(CommandSender $sender, array $args, bool $useCommandPrefix = false) :bool
     {
-        $hook = self::getHookQueue()->dequeue($sender);
+        $hook = CommandHookManager::getInstance()->dequeue($sender);
 
         if (!$hook->isNull) {
             Main::getInstance()->getLogger()->debug("call hook");
@@ -94,65 +78,80 @@ class CommandInvoker
             return true;
         }
 
+        // 引数からコマンドを取得
         $command = array_shift($args) ?? "";
 
+        // コマンドプレフィックスを使う場合
         if ($useCommandPrefix) {
+            // 文字列の先頭がコマンドプレフィックスではない場合
             if (strpos($command, self::COMMAND_PREFIX) !== 0) {
                 return false;
             }
 
+            // コマンドプレフィックスを除去
             $command = ltrim($command, self::COMMAND_PREFIX);
         }
 
+        // コマンドレシーバーのリストにキー（コマンド名）が不在の場合
         if (!array_key_exists($command, $this->list)) {
             return false;
         }
 
-        $receiver = $this->getReceiver($command);
+        // コマンドレシーバーを取得
+        $receiver = $this->get($command);
 
-        if ($this->validate($sender, $receiver)) {
+        // レシーバーの実行権限がある場合
+        if ($this->checkPermission($sender, $receiver)) {
+            // レシーバーを実行
             $receiver->execute($this, $sender, $args);
         }
 
         return true;
     }
 
-    private function validate(CommandSender $sender, ICommandReceiver $receiver) : bool
+    /*
+     * 実行権限を検証。実行許可OKならtrueを返す
+     */
+    private function checkPermission(CommandSender $sender, ICommandReceiver $receiver) : bool
     {
+        // プレイヤーの場合
         if (Main::isPlayer($sender)) {
+            // プレイヤー実行権限がある場合
             if ($receiver->isAllowPlayer()) {
                 $player = Main::castCommandSenderToPlayer($sender);
+                // OPのみ実行権限がある場合
                 if ($receiver->isAllowOpOnly()) {
+                    // プレイヤーがOPの場合
                     if ($player->isOp()) {
                         return true;
                     } else {
-                        $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("commandAtOpOnly"));
+                        Main::getInstance()->sendMessageResource($sender, "commandAtOpOnly");
                         return false;
                     }
                 } else {
                     return true;
                 }
             } else {
-                $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("commandAtConsole"));
+                Main::getInstance()->sendMessageResource($sender, "commandAtConsole");
                 return false;
             }
         } else {
+            // プレイヤー以外の場合
+            // コンソール実行許可がある場合
             if ($receiver->isAllowConsole()) {
                 return true;
             } else {
-                $sender->sendMessage(TextFormat::RED . Main::getInstance()->getMessage("commandAtPlayer"));
+                Main::getInstance()->sendMessageResource($sender, "commandAtPlayer");
                 return false;
             }
         }
     }
 
-    private function getReceiver(string $name) : ICommandReceiver
+    /*
+     * コマンドレシーバーを取得
+     */
+    private function get(string $name) : ICommandReceiver
     {
         return $this->list[$name];
-    }
-
-    public function existsCommand(string $command) : bool
-    {
-        return array_key_exists($command, $this->list);
     }
 }

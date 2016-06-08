@@ -2,13 +2,13 @@
 
 namespace Jhelom\LoginAuth;
 
-
+/*
+ * コマンドフック
+ */
 class CommandHook
 {
-    /**
+    /*
      * コンストラクタ
-     *
-     * @param bool $isNull
      */
     public function __construct(bool $isNull = false)
     {
@@ -21,5 +21,6 @@ class CommandHook
     // データ
     public $data;
 
+    // ヌルを示すなら true
     public $isNull;
 }
