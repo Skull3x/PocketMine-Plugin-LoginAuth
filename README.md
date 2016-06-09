@@ -182,3 +182,9 @@ passwordLengthMin: 5
 passwordLengthMaz: 10
 ```
 
+# Special Thanks
+
+本プラグインの開発及びテストにご協力頂いた方々に心より感謝いたします。
+
+Dragon7鯖主 (dragon7.cloudapp.net) 
+[https://web.lobi.co/game/minecraftpe/group/0f8e21b8a3daa476600b1dde3815b5f28b542b3c](https://web.lobi.co/game/minecraftpe/group/0f8e21b8a3daa476600b1dde3815b5f28b542b3c)
