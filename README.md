@@ -26,6 +26,8 @@
 
 下記URLからpharファイルをダウンロードします。
 
+https://github.com/jhelom/PocketMine-Plugin-LoginAuth/releases
+
 # インストール
 
 pharファイルを pluginsディレクトリ下に配置します。
