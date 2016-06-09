@@ -35,7 +35,7 @@ class Account
     public $securityStamp;
 
     // 最終ログにン日時（文字列）
-    public $lastLogin;
+    public $lastLoginTime;
 
     // データベース不在なら true を示す
     public $isNull;

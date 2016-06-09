@@ -103,7 +103,7 @@ class FindCommandReceiver implements ICommandReceiver
                 . " | "
                 . str_pad($a->clientId, $paddingLarge)
                 . " | "
-                . str_pad($a->lastLogin, $paddingLarge)
+                . str_pad($a->lastLoginTime, $paddingLarge)
                 . " | ";
 
             $sender->sendMessage($s);
