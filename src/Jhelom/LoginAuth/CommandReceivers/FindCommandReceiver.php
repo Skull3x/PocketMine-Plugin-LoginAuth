@@ -8,11 +8,11 @@ use Jhelom\LoginAuth\Main;
 use pocketmine\command\CommandSender;
 use pocketmine\utils\TextFormat;
 
-class ListCommandReceiver implements ICommandReceiver
+class FindCommandReceiver implements ICommandReceiver
 {
     public function getName() : string
     {
-        return "list";
+        return "find";
     }
 
     public function isAllowConsole() : bool
@@ -40,7 +40,7 @@ class ListCommandReceiver implements ICommandReceiver
         $name = array_shift($args) ?? "";
 
         if ($name === "") {
-            Main::getInstance()->sendMessageResource($sender, ["listHelp", "listUsage"]);
+            Main::getInstance()->sendMessageResource($sender, ["findHelp", "findUsage"]);
             return;
         }
 

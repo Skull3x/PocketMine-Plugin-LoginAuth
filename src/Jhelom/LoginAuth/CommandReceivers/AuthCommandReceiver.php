@@ -22,7 +22,7 @@ class AuthCommandReceiver implements ICommandReceiver
         // サブコマンドを登録
         $this->subInvoker->add(new UnregisterCommandReceiver());
         $this->subInvoker->add(new AddCommandReceiver());
-        $this->subInvoker->add(new ListCommandReceiver());
+        $this->subInvoker->add(new FindCommandReceiver());
     }
 
     /*
