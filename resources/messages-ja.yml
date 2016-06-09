@@ -1,41 +1,58 @@
----
-commandAtLogin: §cこのコマンドはログイン認証していないため実行できません
-commandAtPlayer: §cこのコマンドはクライアントから実行してください
-commandAtConsole: §cこのコマンドはコンソールから実行してください
-commandAtOpOnly: §cこのコマンドはOPのみ実行できます
-commandNeedAuth: §cログイン認証しないとコマンドは実行できません
+commandAtLogin: §dこのコマンドはログイン認証していないため実行できません
+commandAtPlayer: §dこのコマンドはクライアントから実行してください
+commandAtConsole: §dこのコマンドはコンソールから実行してください
+commandAtOpOnly: §dこのコマンドはOPのみ実行できます
+commandNeedAuth: §dログイン認証しないとコマンドは実行できません
 
 login: §eログイン認証してください
-loginUsage: §e/login <password>
+loginUsage: "§e/login <password>"
 loginSuccessful: §aログイン認証しました
 loginAlready: §aログイン認証済みです
-loginMultiDeviceError: §c重複ログインはできません。先にログインしている端末からログアウトしてください
+loginMultiDeviceError: §d重複ログインはできません。先にログインしている端末からログアウトしてください
 
 register: §eはじめての方はアカウント登録してください
 registerUsage: §e/register <password>
-registerConfirm: §e確認のためもう一度パスワードを入力してください
-registerConfirmError: §cパスワードが違います。もう一度 register からやり直してください
+registerConfirm: §d確認のためもう一度パスワードを入力してください
+registerConfirmError: §dパスワードが違います。もう一度 register からやり直してください
 registerSuccessful: §aアカウントを登録しました。パスワード「§f{password}§a」を忘れないようにしてください
 registerAlready: §e既にアカウントを登録済みです
-registerExists: §c名前{name}は既に登録されています。別の名前に変更してください
-registerNameRule: §c名前は半角英数字で{min}文字以上にしてください
+registerExists: §d名前 §f{name}§d は既に登録されています。別の名前に変更してください
+registerNameRule: §d名前は半角英数字で{min}文字以上にしてください
 
-unregisterRequired: §c削除したいアカウント（プレイヤー名）を入力してください
-unregisterNotFound: §cアカウント「{name}」は存在しません
-unregisterConfirm: §e本当にアカウント「{name}」を削除しますか？削除するには Y を、キャンセルは N を入力してください
-unregisterCancel: §cアカウントの削除をキャンセルしました
-unregisterSuccessful: §aアカウント「{name}」が削除されました
+unregisterRequired: §d削除したいアカウント（プレイヤー名）を入力してください
+unregisterConfirm: §d本当にアカウント「§f{name}§d」を削除しますか？削除するには「§fY§d」を、キャンセルは「§fY以外§d」を入力してください
+unregisterCancel: §dアカウントの削除をキャンセルしました
+unregisterSuccessful: §aアカウント「§f{name}§a」を削除しました
 
-passwordError: §cパスワードが違います
-passwordRequired: §cパスワードを入力してください
-passwordLengthMin: §cパスワードは{length}文字以上にしてください
-passwordLengthMax: §cパスワードは{length}文字以下にしてください
-passwordFormat: §cパスワードは半角英数字のみにしてください
+passwordError: §dパスワードが違います
+passwordRequired: §dパスワードを入力してください
+passwordLengthMin: §dパスワードは{length}文字以上にしてください
+passwordLengthMax: §dパスワードは{length}文字以下にしてください
+passwordFormat: §dパスワードは半角英数字のみにしてください
 
-accountSlotOver1: §cこの端末ではこれ以上アカウントを登録することはできません。アカウントを削除したい場合はサーバー管理者に依頼してください
-accountSlotOver2: §cこの端末で登録されていアカウントの一覧は次の通りです。名前を変更してログインしなおしてください
+addHelp: コンソールからアカウントを追加する。password を指定しない場合はランダムなパスワードを生成します。
+addUsage: auth add <player> [password]
+addSuccessful: §aコンソールからアカウント「§f{name}§a」を登録しました。パスワードは「§f{password}§a」です。
 
-messageResourceNotFound: §cメッセージリソース「{file}」が見つかりません。
+chagenPasswordHelp: パスワードを変更する
+changePasswordUsage: "/password <新しいパスワード>"
+changePasswordConfirm: §d確認のためもう一度新しいパスワードを入力してください。パスワード変更を中止するには何も入力せずにENTERキーを押すか、わざと違う文字列を入力してください
+changePasswordError: §dパスワードが違います。パスワードの変更を中止しました
+changePasswordSuccessful: §aパスワードを変更しました。新しいパスワード「§f{password}§a」を忘れないようにしてください
 
-authUsage: auth サブコマンドの使用方法(LoginAuth)
-authUsage2: アカウント削除 = auth unregiser <プレイヤー名>
+accountSlotOver1: §d１つの端末で登録できるアカウント数の上限は{accountSlot}に制限されています
+accountSlotOver2: §dこの端末ではこれ以上アカウントを登録することはできません
+accountSlotOver3: §dこの端末で登録されていアカウントの一覧は次の通りです
+accountSlotOver4: §d名前を変更してログインしなおしてください
+
+accountNotFound: §dアカウント「{name}」は存在しません
+
+messageResourceNotFound: §dメッセージリソース「{file}」が見つかりません。
+
+authHelp: auth サブコマンドの使用方法(LoginAuth)
+authUsage2: "§aauth find <プレイヤー名の一部> §f: 同一IP同一端末のアカウントを検索"
+authUsage3: "§aauth unregister <プレイヤー名> §f: コンソールからアカウント登録"
+authUsage4: "§aauth add <プレイヤー名> [パスワード]　§f: コンソールからアカウント登録"
+
+findHelp: アカウントを名前で検索して、同じIPまたは同じ端末IDの一覧を表示する
+findUsage: "auth find <プレイヤー名>"
