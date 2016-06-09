@@ -201,8 +201,8 @@ class EventListener implements Listener
 
         // 未認証ならイベントをキャンセル
         if ($this->cancelEventIfNotAuth($event, $player)) {
-            // 落下しようとしている(Zの移動）場合、画面がカクカクするので
-            // ゲーム参加時のX,Yと同じならイベントのキャンセルを取消（つまりイベントをキャンセルしない）
+            // 落下しようとしている(Yの移動）場合、画面がカクカクするので
+            // ゲーム参加時のX,Zと同じならイベントのキャンセルを取消（つまりイベントをキャンセルしない）
             if ($this->compareJoinPosition($player)) {
                 $event->setCancelled(false);
             } else {
