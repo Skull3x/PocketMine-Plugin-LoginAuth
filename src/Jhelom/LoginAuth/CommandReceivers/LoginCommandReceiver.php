@@ -45,6 +45,11 @@ class LoginCommandReceiver implements ICommandReceiver
         return false;
     }
 
+    public function isAllowAuthenticated() : bool
+    {
+        return false;
+    }
+
     /*
      * 実行
      */
@@ -87,11 +92,15 @@ class LoginCommandReceiver implements ICommandReceiver
             return;
         }
 
-        // データベースのセキュリティスタンプを更新
-        $sql = "UPDATE account SET securityStamp = :securityStamp WHERE name = :name";
+        // データベースを更新
+        $sql = "UPDATE account SET ip = :ip ,clientId = :clientId, securityStamp = :securityStamp, lastLoginTime = :lastLoginTime WHERE name = :name";
         $stmt = Main::getInstance()->preparedStatement($sql);
         $stmt->bindValue(":name", strtolower($player->getName()), \PDO::PARAM_STR);
+        $stmt->bindValue(":ip", $player->getAddress(), \PDO::PARAM_STR);
+        $stmt->bindValue(":clientId", $player->getClientId(), \PDO::PARAM_STR);
         $stmt->bindValue(":securityStamp", Account::makeSecurityStamp($player), \PDO::PARAM_STR);
+        $now = new \DateTime();
+        $stmt->bindValue(":lastLoginTime", $now->format('Y-m-d H:i:s'), \PDO::PARAM_STR);
         $stmt->execute();
 
         // ログインキャッシュに登録

@@ -4,6 +4,7 @@ namespace Jhelom\LoginAuth;
 
 use Jhelom\LoginAuth\CommandReceivers\AuthCommandReceiver;
 use Jhelom\LoginAuth\CommandReceivers\LoginCommandReceiver;
+use Jhelom\LoginAuth\CommandReceivers\PasswordChangeCommandReceiver;
 use Jhelom\LoginAuth\CommandReceivers\RegisterCommandReceiver;
 use pocketmine\command\CommandSender;
 use pocketmine\event\block\BlockBreakEvent;
@@ -31,27 +32,29 @@ use pocketmine\Player;
 
 class EventListener implements Listener
 {
-    const INTERVAL_SECONDS = 7;
+    // 「ログインして」や「登録して」メッセージの表示間隔（秒単位）
+    const INTERVAL_SECONDS = 10;
 
-    // メイン
-    private $main;
-
+    // メッセージ表示間隔用に最終表示時間の履歴を保持するリスト
     private $lastSendMessageTime = [];
 
+    // インボーカー
     private $invoker;
+
+    // プレイヤーがジョインしたときの座標
+    private $playerJoinPosition = [];
 
     /*
      * コンストラクタ
      */
-    public function __construct(Main $main)
+    public function __construct()
     {
-        $this->main = $main;
-
         // インボーカーを初期化
-        $this->invoker = new CommandInvoker($main);
+        $this->invoker = new CommandInvoker();
         $this->invoker->add(new RegisterCommandReceiver());
         $this->invoker->add(new LoginCommandReceiver());
         $this->invoker->add(new AuthCommandReceiver());
+        $this->invoker->add(new PasswordChangeCommandReceiver());
     }
 
     /*
@@ -59,7 +62,7 @@ class EventListener implements Listener
      */
     public function onPlayerCommand(PlayerCommandPreprocessEvent $event)
     {
-        $this->main->getLogger()->debug("onPlayerCommand: " . $event->getPlayer()->getName());
+        Main::getInstance()->getLogger()->debug("onPlayerCommand: " . $event->getPlayer()->getName());
 
         // インボーカーでコマンドを処理
         $this->invoker->invokePlayerCommand($event);
@@ -78,12 +81,12 @@ class EventListener implements Listener
         $player = $event->getPlayer();
 
         // ログイン認証されている場合
-        if ($this->main->isAuthenticated($player)) {
+        if (Main::getInstance()->isAuthenticated($player)) {
             return;
         }
 
         // 「ログイン認証しないとコマンドは実行できません」メッセージを表示
-        $player->sendMessage($this->main->getMessage("commandNeedAuth"));
+        $player->sendMessage(Main::getInstance()->getMessage("commandNeedAuth"));
         $this->needAuthMessage($player);
 
         // イベントをキャンセル
@@ -95,7 +98,7 @@ class EventListener implements Listener
      */
     public function onServerCommand(ServerCommandEvent $event)
     {
-        $this->main->getLogger()->debug("onServerCommand: " . $event->getSender()->getName());
+        Main::getInstance()->getLogger()->debug("onServerCommand: " . $event->getSender()->getName());
 
         $this->invoker->invokeServerCommand($event);
     }
@@ -105,7 +108,7 @@ class EventListener implements Listener
      */
     public function onPlayerPreLogin(PlayerPreLoginEvent $event)
     {
-        $this->main->getLogger()->debug("onPlayerPreLogin: ");
+        Main::getInstance()->getLogger()->debug("onPlayerPreLogin: ");
 
         // プレイヤーを取得
         $player = $event->getPlayer();
@@ -116,22 +119,27 @@ class EventListener implements Listener
         // 重複ログインを禁止するために、既に別端末からログインしていたら拒否する
 
         // ログイン中の全プレイヤーの一覧を取得
-        $onlinePlayerList = $this->main->getServer()->getOnlinePlayers();
+        $onlinePlayerList = Main::getInstance()->getServer()->getOnlinePlayers();
 
         // ログイン中の全プレイヤーをループ
         foreach ($onlinePlayerList as $onlinePlayer) {
+            // 自分自身なら処理をスキップ
+            if ($onlinePlayer->getRawUniqueId() === $player->getRawUniqueId()) {
+                continue;
+            }
+
             // ログイン中のプレイヤーの名前を小文字に変換
             $onlinePlayerName = strtolower($onlinePlayer->getName());
 
             // 名前が同じで
-            if ($onlinePlayer !== $player and $onlinePlayerName === $name) {
+            if ($onlinePlayerName === $name) {
                 // ログイン認証済みなら
-                if ($this->main->isAuthenticated($onlinePlayer)) {
+                if (Main::getInstance()->isAuthenticated($onlinePlayer)) {
                     // イベントをキャンセル
                     $event->setCancelled(true);
 
                     // 拒否する
-                    $event->setKickMessage($this->main->getMessage("loginMultiDeviceError"));
+                    $player->close("", Main::getInstance()->getMessage("loginMultiDeviceError"));
                     return;
                 }
             }
@@ -143,16 +151,19 @@ class EventListener implements Listener
      */
     public function onPlayerJoin(PlayerJoinEvent $event)
     {
-        $this->main->getLogger()->debug("onPlayerJoin: ");
+        Main::getInstance()->getLogger()->debug("onPlayerJoin: ");
 
         // プレイヤーを取得
         $player = $event->getPlayer();
 
         // 認証済みなら
-        if ($this->main->isAuthenticated($player)) {
+        if (Main::getInstance()->isAuthenticated($player)) {
             // ログイン認証済みメッセージ表示
-            $player->sendMessage($this->main->getMessage("loginAlready"));
+            $player->sendMessage(Main::getInstance()->getMessage("loginAlready"));
         } else {
+            // 座標を記録
+            $this->saveJoinPosition($player);
+
             // ログインまたはアカウント登録してくれメッセージを表示
             $this->needAuthMessage($player, true);
         }
@@ -163,15 +174,19 @@ class EventListener implements Listener
      */
     public function onPlayerQuit(PlayerQuitEvent $event)
     {
-        $this->main->getLogger()->debug("onPlayerQuit: ");
+        Main::getInstance()->getLogger()->debug("onPlayerQuit: ");
 
         // プレイヤーを取得
         $player = $event->getPlayer();
 
         // コマンドフックをクリア
-        $this->invoker->getHookQueue()->clear($player);
+        CommandHookManager::getInstance()->clear($player);
 
-        unset($this->lastSendMessageTime[$player->getRawUniqueId()]);
+        $key = $player->getRawUniqueId();
+        unset($this->lastSendMessageTime[$key]);
+
+        // 座標を削除
+        $this->removeJoinPosition($player);
     }
 
     /*
@@ -186,7 +201,13 @@ class EventListener implements Listener
 
         // 未認証ならイベントをキャンセル
         if ($this->cancelEventIfNotAuth($event, $player)) {
-            $event->getPlayer()->onGround = true;
+            // 落下しようとしている(Zの移動）場合、画面がカクカクするので
+            // ゲーム参加時のX,Yと同じならイベントのキャンセルを取消（つまりイベントをキャンセルしない）
+            if ($this->compareJoinPosition($player)) {
+                $event->setCancelled(false);
+            } else {
+                $event->getPlayer()->onGround = true;
+            }
         }
     }
 
@@ -195,7 +216,7 @@ class EventListener implements Listener
      */
     public function onPlayerInteract(PlayerInteractEvent $event)
     {
-        $this->main->getLogger()->debug("onPlayerInteract: ");
+        Main::getInstance()->getLogger()->debug("onPlayerInteract: ");
 
         // プレイヤーを取得
         $player = $event->getPlayer();
@@ -209,7 +230,7 @@ class EventListener implements Listener
      */
     public function onPlayerDropItem(PlayerDropItemEvent $event)
     {
-        $this->main->getLogger()->debug("onPlayerPreLogin: ");
+        Main::getInstance()->getLogger()->debug("onPlayerPreLogin: ");
 
         // プレイヤーを取得
         $player = $event->getPlayer();
@@ -223,7 +244,7 @@ class EventListener implements Listener
      */
     public function onPlayerItemConsume(PlayerItemConsumeEvent $event)
     {
-        $this->main->getLogger()->debug("onPlayerItemConsume: ");
+        Main::getInstance()->getLogger()->debug("onPlayerItemConsume: ");
 
         // プレイヤーを取得
         $player = $event->getPlayer();
@@ -237,12 +258,23 @@ class EventListener implements Listener
      */
     public function onEntityDamage(EntityDamageEvent $event)
     {
-        $this->main->getLogger()->debug("onEntityDamage: ");
+        // $this->main->getLogger()->debug("onEntityDamage: ");
 
         $entity = $event->getEntity();
 
-        // 未認証ならイベントをキャンセル
-        $this->cancelEventIfNotAuth($event, $entity);
+        if ($entity instanceof Player) {
+            // 未認証ならイベントをキャンセル
+            $this->cancelEventIfNotAuth($event, $this->castEntityToPlayer($entity));
+        }
+    }
+
+    /*
+     * Entity を Player にタイプヒンティングを利用して疑似的にキャスト
+     * というか、そもそもクラス間に継承関係はないようだが…
+     */
+    private function castEntityToPlayer($entity) : Player
+    {
+        return $entity;
     }
 
     /*
@@ -250,7 +282,7 @@ class EventListener implements Listener
      */
     public function onBlockBreak(BlockBreakEvent $event)
     {
-        $this->main->getLogger()->debug("onBlockBreak: ");
+        Main::getInstance()->getLogger()->debug("onBlockBreak: ");
 
         $player = $event->getPlayer();
 
@@ -263,7 +295,7 @@ class EventListener implements Listener
      */
     public function onBlockPlace(BlockPlaceEvent $event)
     {
-        $this->main->getLogger()->debug("onBlockPlace: ");
+        Main::getInstance()->getLogger()->debug("onBlockPlace: ");
 
         $player = $event->getPlayer();
 
@@ -276,7 +308,7 @@ class EventListener implements Listener
      */
     public function onInventoryOpen(InventoryOpenEvent $event)
     {
-        $this->main->getLogger()->debug("onInventoryOpen: ");
+        Main::getInstance()->getLogger()->debug("onInventoryOpen: ");
 
         $player = $event->getPlayer();
 
@@ -289,7 +321,7 @@ class EventListener implements Listener
      */
     public function onPickupItem(InventoryPickupItemEvent $event)
     {
-        $this->main->getLogger()->debug("onPickupItem: ");
+        Main::getInstance()->getLogger()->debug("onPickupItem: ");
 
         $holder = $event->getInventory()->getHolder();
 
@@ -301,6 +333,9 @@ class EventListener implements Listener
         }
     }
 
+    /*
+     * InventoryHolder を Player にタイプヒンティングで疑似的にキャスト
+     */
     private function castInventoryHolderToPlayer(InventoryHolder $holder) : Player
     {
         return $holder;
@@ -312,7 +347,7 @@ class EventListener implements Listener
     private function cancelEventIfNotAuth(Cancellable $event, CommandSender $sender) : bool
     {
         // Player ではない場合
-        if (Main::isNotPlayer($sender)) {
+        if (!($sender instanceof Player)) {
             return false;
         }
 
@@ -368,14 +403,43 @@ class EventListener implements Listener
         $this->lastSendMessageTime[$key] = $now;
 
         // アカウント登録状態に応じて表示するメッセージを切り替える
-        if ($this->main->isRegistered($player)) {
+        if (Main::getInstance()->isRegistered($player)) {
             // ログインしてもらうメッセージ
-            $player->sendMessage($this->main->getMessage("login"));
-            $player->sendMessage($this->main->getMessage("loginUsage"));
+            $player->sendMessage(Main::getInstance()->getMessage("login"));
+            $player->sendMessage(Main::getInstance()->getMessage("loginUsage"));
         } else {
             // 未登録ならアカウント登録してもらうメッセージ
-            $player->sendMessage($this->main->getMessage("register"));
-            $player->sendMessage($this->main->getMessage("registerUsage"));
+            $player->sendMessage(Main::getInstance()->getMessage("register"));
+            $player->sendMessage(Main::getInstance()->getMessage("registerUsage"));
         }
+    }
+
+    /*
+     * 座標を保存
+     */
+    private function saveJoinPosition(Player $player)
+    {
+        $key = $player->getRawUniqueId();
+        $value = $player->getFloorX() . "/" . $player->getFloorZ();
+        $this->playerJoinPosition[$key] = $value;
+    }
+
+    /*
+     * 座標を比較
+     */
+    private function compareJoinPosition(Player $player) : bool
+    {
+        $key = $player->getRawUniqueId();
+        $value = $player->getFloorX() . "/" . $player->getFloorZ();
+        return $value === $this->playerJoinPosition[$key];
+    }
+
+    /*
+     * 座標を削除
+     */
+    private function removeJoinPosition(Player $player)
+    {
+        $key = $player->getRawUniqueId();
+        unset($this->playerJoinPosition[$key]);
     }
 }

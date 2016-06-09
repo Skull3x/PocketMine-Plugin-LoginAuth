@@ -3,6 +3,7 @@
 namespace Jhelom\LoginAuth\CommandReceivers;
 
 use Jhelom\LoginAuth\Account;
+use Jhelom\LoginAuth\CommandHookManager;
 use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
@@ -47,6 +48,11 @@ class RegisterCommandReceiver implements ICommandReceiver
         return false;
     }
 
+    public function isAllowAuthenticated() : bool
+    {
+        return false;
+    }
+
     /*
      * 実行
      */
@@ -78,7 +84,7 @@ class RegisterCommandReceiver implements ICommandReceiver
         }
 
         // パスワードが不適合の場合
-        if ($this->isInvalidPassword($player, $password)) {
+        if (Main::getInstance()->isInvalidPassword($player, $password, "registerUsage")) {
             return;
         }
 
@@ -91,13 +97,14 @@ class RegisterCommandReceiver implements ICommandReceiver
         Main::getInstance()->sendMessageResource($sender, "registerConfirm");
 
         // コマンドフックを登録
-        $invoker->getHookQueue()->enqueue([$this, "execute2"], $sender, $password);
+        CommandHookManager::getInstance()->enqueue([$this, "execute2"], $sender, $password);
     }
 
     /*
      * データベースにアカウントを登録する
      */
-    public function execute2(CommandInvoker $invoker, CommandSender $sender, array $args, $data)
+    public function execute2(/** @noinspection PhpUnusedParameterInspection */
+        CommandInvoker $invoker, CommandSender $sender, array $args, $data)
     {
         Main::getInstance()->getLogger()->debug("register: execute2: ");
 
@@ -114,13 +121,15 @@ class RegisterCommandReceiver implements ICommandReceiver
         $player = Main::getInstance()->castCommandSenderToPlayer($sender);
 
         //　データベースに登録
-        $sql = "INSERT INTO account (name, clientId, ip, passwordHash, securityStamp) VALUES (:name, :clientId, :ip, :passwordHash, :securityStamp)";
+        $sql = "INSERT INTO account (name, clientId, ip, passwordHash, securityStamp, lastLoginTime) VALUES (:name, :clientId, :ip, :passwordHash, :securityStamp, :lastLoginTime)";
         $stmt = Main::getInstance()->preparedStatement($sql);
         $stmt->bindValue(":name", strtolower($player->getName()), \PDO::PARAM_STR);
         $stmt->bindValue(":clientId", $player->getClientId(), \PDO::PARAM_STR);
         $stmt->bindValue(":ip", $player->getAddress(), \PDO::PARAM_STR);
         $stmt->bindValue(":passwordHash", Account::makePasswordHash($password), \PDO::PARAM_STR);
         $stmt->bindValue(":securityStamp", Account::makeSecurityStamp($player), \PDO::PARAM_STR);
+        $now = new \DateTime();
+        $stmt->bindValue(":lastLoginTime", $now->format('Y-m-d H:i:s'), \PDO::PARAM_STR);
         $stmt->execute();
 
         // ログインキャッシュに登録
@@ -136,7 +145,7 @@ class RegisterCommandReceiver implements ICommandReceiver
     private function isInvalidAccountSlot(Player $player) : bool
     {
         // 端末IDをもとにデータベースからアカウント一覧を取得
-        $accountList = Main::getInstance()->findAccountsByClientId($player->getClientId());
+        $accountList = Main::getInstance()->findAccountListByClientId($player->getClientId());
 
         // アカウント一覧の数
         $accountListCount = count($accountList);
@@ -159,7 +168,7 @@ class RegisterCommandReceiver implements ICommandReceiver
             $nameListStr = $name = implode(", ", $nameList);
 
             Main::getInstance()->sendMessageResource($player,
-                ["accountSlotOver1", "accountSlotOver2"],
+                ["accountSlotOver1", "accountSlotOver2", "accountSlotOver3", "accountSlotOver4"],
                 ["accountSlot" => $accountSlotMax]);
 
             $player->sendMessage($nameListStr);
@@ -169,48 +178,6 @@ class RegisterCommandReceiver implements ICommandReceiver
 
         return false;
     }
-
-    /*
-     * パスワードが不適合ならtrueを返す
-    */
-    private function isInvalidPassword(CommandSender $sender, string $password) : bool
-    {
-        // パスワードが空欄の場合
-        if ($password === "") {
-            Main::getInstance()->sendMessageResource($sender, ["passwordRequired", "registerUsage"]);
-            return true;
-        }
-
-        // 使用可能文字の検証
-        if (!preg_match("/^[a-zA-Z0-9!#@]+$/", $password)) {
-            Main::getInstance()->sendMessageResource($sender, "passwordFormat");
-            return true;
-        }
-
-        // 設定ファイルからパスワードの文字数の下限を取得
-        $passwordLengthMin = Main::getInstance()->getConfig()->get("passwordLengthMin");
-
-        // 設定ファイルからパスワードの文字数の上限を取得
-        $passwordLengthMax = Main::getInstance()->getConfig()->get("passwordLengthMax");
-
-        // パスワードの文字数を取得
-        $passwordLength = strlen($password);
-
-        // パスワードが短い場合
-        if ($passwordLength < $passwordLengthMin) {
-            Main::getInstance()->sendMessageResource($sender, "passwordLengthMin", ["length" => $passwordLengthMin]);
-            return true;
-        }
-
-        // パスワードが長い場合
-        if ($passwordLength > $passwordLengthMax) {
-            Main::getInstance()->sendMessageResource($sender, "passwordLengthMax", ["length" => $passwordLengthMax]);
-            return true;
-        }
-
-        return false;
-    }
-
 
     /*
      * 名前が不適合ならtrueを返す

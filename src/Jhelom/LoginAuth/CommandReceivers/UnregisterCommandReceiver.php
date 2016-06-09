@@ -2,6 +2,7 @@
 
 namespace Jhelom\LoginAuth\CommandReceivers;
 
+use Jhelom\LoginAuth\CommandHookManager;
 use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
@@ -41,6 +42,11 @@ class UnregisterCommandReceiver implements ICommandReceiver
         return true;
     }
 
+    public function isAllowAuthenticated() : bool
+    {
+        return true;
+    }
+
     /*
      * 実行
      */
@@ -64,7 +70,7 @@ class UnregisterCommandReceiver implements ICommandReceiver
 
         // アカウントが不在の場合
         if ($account->isNull) {
-            Main::getInstance()->sendMessageResource($sender, "unregisterNotFound", ["name" => $targetPlayerName]);
+            Main::getInstance()->sendMessageResource($sender, "accountNotFound", ["name" => $targetPlayerName]);
             return;
         }
 
@@ -72,13 +78,14 @@ class UnregisterCommandReceiver implements ICommandReceiver
         Main::getInstance()->sendMessageResource($sender, "unregisterConfirm", ["name" => $targetPlayerName]);
 
         // コマンドフックを追加
-        $invoker->getHookQueue()->enqueue([$this, "execute2"], $sender, $targetPlayerName);
+        CommandHookManager::getInstance()->enqueue([$this, "execute2"], $sender, $targetPlayerName);
     }
 
     /*
      * 削除
      */
-    public function execute2(CommandInvoker $invoker, CommandSender $sender, array $args, $data)
+    public function execute2(/** @noinspection PhpUnusedParameterInspection */
+        CommandInvoker $invoker, CommandSender $sender, array $args, $data)
     {
         // 確認入力を取得
         $input = strtolower(array_shift($args) ?? "");

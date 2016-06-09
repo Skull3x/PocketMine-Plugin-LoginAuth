@@ -3,14 +3,14 @@ version: 1.0
 # メッセージリソースの言語
 locale: ja
 
-#　パスワードの文字数の下限
+# パスワードの文字数の下限
 passwordLengthMin: 5
 
 # パスワードの文字数の上限
 passwordLengthMax: 10
 
 # １つの端末で作成可能なアカウント数の上限
-accountSlot: 3
+accountSlot: 2
 
-# 名前の文字数の下限
+# プレイヤー名の文字数の下限
 nameLengthMin: 3
