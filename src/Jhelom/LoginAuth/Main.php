@@ -308,11 +308,14 @@ _SQL_;
     /*
      * パスワードが不適合ならtrueを返す
     */
-    public function isInvalidPassword(CommandSender $sender, string $password) : bool
+    public function isInvalidPassword(CommandSender $sender, string $password, string $usage = NULL) : bool
     {
         // パスワードが空欄の場合
         if ($password === "") {
-            Main::getInstance()->sendMessageResource($sender, ["passwordRequired", "registerUsage"]);
+            Main::getInstance()->sendMessageResource($sender, "passwordRequired");
+            if ($usage !== NULL) {
+                Main::getInstance()->sendMessageResource($sender, $usage);
+            }
             return true;
         }
 

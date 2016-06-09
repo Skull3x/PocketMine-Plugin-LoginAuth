@@ -44,7 +44,7 @@ class PasswordChangeCommandReceiver implements ICommandReceiver
         $player = Main::getInstance()->castCommandSenderToPlayer($sender);
 
         // パスワードが不適合の場合
-        if (Main::getInstance()->isInvalidPassword($player, $newPassword)) {
+        if (Main::getInstance()->isInvalidPassword($player, $newPassword, "changePasswordUsage")) {
             return;
         }
 
