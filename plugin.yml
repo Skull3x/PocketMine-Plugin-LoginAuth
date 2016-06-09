@@ -19,6 +19,6 @@ commands:
     usage: "/password <new-password>"
   auth:
     description: "アカウント管理(LoginAuth)"
-    usage: "/auth <add|list|unregister>"
+    usage: "/auth <add|find|unregister>"
 
 

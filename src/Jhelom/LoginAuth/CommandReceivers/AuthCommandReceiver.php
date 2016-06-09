@@ -71,7 +71,6 @@ class AuthCommandReceiver implements ICommandReceiver
             Main::getInstance()->sendMessageResource($sender,
                 [
                     "authHelp",
-                    "authUsage",
                     "authUsage2",
                     "authUsage3",
                     "authUsage4",

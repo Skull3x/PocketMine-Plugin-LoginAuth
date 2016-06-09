@@ -44,25 +44,22 @@ class FindCommandReceiver implements ICommandReceiver
             return;
         }
 
-        $sql1 = "SELECT * FROM account WHERE name LIKE :name";
-        $stmt1 = Main::getInstance()->preparedStatement($sql1);
-        $stmt1->bindValue(":name", "%" . $name . "%", \PDO::PARAM_STR);
-        $stmt1->execute();
-        $account = $stmt1->fetchObject("Jhelom\\LoginAuth\\Account");
+        $account = Main::getInstance()->findAccountByName($name);
 
-        if ($account === false) {
+        // アカウント不在の場合
+        if ($account->isNull) {
             Main::getInstance()->sendMessageResource($sender, "accountNotFound", ["name" => $name]);
             return;
         }
 
-        $sql2 = "SELECT * FROM account WHERE name = :name OR ip = :ip OR clientId = :clientId ORDER BY ip, clientId, name LIMIT 100";
-        $stmt2 = Main::getInstance()->preparedStatement($sql2);
-        $stmt2->bindValue(":name", $name, \PDO::PARAM_STR);
-        $stmt2->bindValue(":ip", $account->ip, \PDO::PARAM_STR);
-        $stmt2->bindValue(":clientId", $account->clientId, \PDO::PARAM_STR);
-        $stmt2->execute();
-        $accountList = $stmt2->fetchAll(\PDO::FETCH_CLASS, "Jhelom\\LoginAuth\\Account");
-
+        // 同一IP、同一端末IDを検索
+        $sql = "SELECT * FROM account WHERE name = :name OR ip = :ip OR clientId = :clientId ORDER BY ip, clientId, name LIMIT 20";
+        $stmt = Main::getInstance()->preparedStatement($sql);
+        $stmt->bindValue(":name", $name, \PDO::PARAM_STR);
+        $stmt->bindValue(":ip", $account->ip, \PDO::PARAM_STR);
+        $stmt->bindValue(":clientId", $account->clientId, \PDO::PARAM_STR);
+        $stmt->execute();
+        $accountList = $stmt->fetchAll(\PDO::FETCH_CLASS, "Jhelom\\LoginAuth\\Account");
 
         $padding = 15;
         $paddingLarge = 20;
@@ -77,9 +74,7 @@ class FindCommandReceiver implements ICommandReceiver
             . str_pad("", $paddingLarge, "-")
             . "-+";
 
-        $sender->sendMessage($border);
-
-        $s = "| "
+        $header = "| "
             . str_pad("Name", $paddingLarge)
             . " | "
             . str_pad("IP Address", $padding)
@@ -89,7 +84,8 @@ class FindCommandReceiver implements ICommandReceiver
             . str_pad("Last Login", $paddingLarge)
             . " |";
 
-        $sender->sendMessage($s);
+        $sender->sendMessage($border);
+        $sender->sendMessage($header);
         $sender->sendMessage($border);
 
         foreach ($accountList as $a) {
