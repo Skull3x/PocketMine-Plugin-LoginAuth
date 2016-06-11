@@ -192,7 +192,7 @@ class RegisterCommandReceiver implements ICommandReceiver
 
         $errorMessage = Main::getInstance()->getMessage("registerNameRule", ["min" => $min]);
 
-        if (!preg_match("/^[a-zA-Z0-9]+$/", $name)) {
+        if (!preg_match("/^[a-zA-Z0-9_]+$/", $name)) {
             $player->sendMessage($errorMessage);
             return true;
         }

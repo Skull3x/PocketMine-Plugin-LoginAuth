@@ -14,6 +14,7 @@ use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\inventory\InventoryOpenEvent;
 use pocketmine\event\inventory\InventoryPickupItemEvent;
 use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerChatEvent;
 use pocketmine\event\player\PlayerCommandPreprocessEvent;
 use pocketmine\event\player\PlayerDropItemEvent;
 use pocketmine\event\player\PlayerInteractEvent;
@@ -187,6 +188,29 @@ class EventListener implements Listener
 
         // 座標を削除
         $this->removeJoinPosition($player);
+    }
+
+    /*
+     * チャットイベント
+     */
+    public function onChat(PlayerChatEvent $event)
+    {
+        Main::getInstance()->getLogger()->debug("onChat: " . $event->getPlayer() . ": " . $event->getMessage());
+
+        // プレイヤーを取得
+        $player = $event->getPlayer();
+
+        // 未認証ならイベントをキャンセル
+        if ($this->cancelEventIfNotAuth($event, $player)) {
+            $recipients = $event->getRecipients();
+
+            // チャットの受信者をクリア
+            foreach ($recipients as $key => $recipient) {
+                if ($recipient instanceof Player) {
+                    unset($recipients[$key]);
+                }
+            }
+        }
     }
 
     /*
