@@ -12,7 +12,7 @@ loginMultiDeviceError: §d重複ログインはできません。先にログイ
 
 register: §eはじめての方はアカウント登録してください
 registerUsage: §e/register <password>
-registerConfirm: §d確認のためもう一度パスワードをそのまま入力してください
+registerConfirm: §d確認のためもう一度パスワードをそのまま(スラッシュをつけずに）入力してください
 registerConfirmError: §dパスワードが違います。もう一度 register からやり直してください
 registerSuccessful: §aアカウントを登録しました。パスワード「§f{password}§a」を忘れないようにしてください
 registerAlready: §e既にアカウントを登録済みです
