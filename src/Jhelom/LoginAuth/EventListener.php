@@ -160,7 +160,7 @@ class EventListener implements Listener
         // 認証済みなら
         if (Main::getInstance()->isAuthenticated($player)) {
             // ログイン認証済みメッセージ表示
-            $player->sendMessage(Main::getInstance()->getMessage("loginAlready"));
+            Main::getInstance()->sendMessageResource($player, "loginAlready");
         } else {
             // 座標を記録
             $this->saveJoinPosition($player);
