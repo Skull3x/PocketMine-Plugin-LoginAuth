@@ -16,68 +16,6 @@
 
 * 別の端末からの重複ログインを禁止できます。
 
-# 動作環境
-
-* PocketMine（またはGenisysなどの互換サーバー）
-* PHP7 (PHP5では動作しません)
-* PDO(SQLITE3)モジュール
-
-# ダウンロード
-
-下記URLからpharファイルをダウンロードします。
-
-https://github.com/jhelom/PocketMine-Plugin-LoginAuth/releases
-
-# インストール
-
-pharファイルを pluginsディレクトリ下に配置します。
-
-# PDO(SQLITE)モジュールの導入
-
-PDOについてはPHPの公式ドキュメントを参照してください。
-http://php.net/manual/ja/pdo.installation.php
-
-既に PDO(SQLITE3)モジュールが導入されている場合は、この手順は不要です。
-
-Linux の場合や、Windows でも PHP公式サイトからダウンロードしたPHPを使用している場合は、大抵導入済みのはずです。
-
-PocketMine や Genisys のサイトで提供されている　Minecraft PE用にパッケージされた Windows版PHPインストーラーの場合は、PDOモジュールが同梱されていないようです。
-
-PDOモジュールがない場合は、PHP公式サイトからPHPのZIPダウンロードしてください。
-
-http://windows.php.net/download/
-
-
-* PHPが32ビット版の場合は VC14 x86 Thread Safe の ZIP をダウンロードします。
-* PHPが64ビット版の場合は VC14 x64 Thread Safe の ZIP をダウンロードします。
-
-ZIPを展開したら、そのなかから php_pdo_sqlite.dll を、PocketMine用PHPのディレクトリ(php/bin下)にコピーします。
-
-ファイル構成は下記のようになります。
-```
-Genisys
-   +-- bin
-        +-- php
-             +-- php.exe
-             +-- php.ini
-             +-- php_pdo_sqlite.dll
-
-```
-
-php.ini に下記行を追記します。
-たいていコメントアウトされているので、その場合は先頭のセミコロン(;)を削除します。
-
-```
-extension=php_pdo_sqlite.dll
-```
-
-以上でPDO(SQLITE3)モジュールの導入は完了です。
-
-
-# 設定
-
-PocketMine を起動すると pluginsディレクトリ下に「LoginAuth」ディレクトリが自動的に作成されます。
-
 
 # アカウント登録
 
@@ -91,6 +29,10 @@ passwordの部分には自分で考えたパスワードを入力します。
 ```
 /register <password>
 ```
+
+パスワードのタイプミス防止の確認のため、もう一度パスワードの入力が求められます。register で指定したパスワードをそのまま、もう一度入力してください。
+
+確認パスワードの入力が一致すればアカウントの登録が完了します。
 
 アカウント登録が完了するまで、プレイヤーは移動することもコマンド(register/login以外）を実行することもできません。
 
@@ -120,6 +62,11 @@ passwordの部分にはアカウント登録したときのパスワードを入
 ```
 /password <新しいパスワード>
 ```
+
+上記コマンドを実行すると、パスワードのタイプミス防止の確認のため、もう一度パスワードの入力が求められます。新しく指定したパスワードをそのまま、もう一度入力してください。
+
+確認パスワードが一致すればパスワードの変更は完了です。
+
 
 # コンソールからアカウント削除
 
@@ -181,6 +128,68 @@ passwordLengthMin: 5
 ```
 passwordLengthMaz: 10
 ```
+
+# 動作環境
+
+* PocketMine（またはGenisysなどの互換サーバー）
+* PHP7 (PHP5では動作しません)
+* PDO(SQLITE3)モジュール
+
+# ダウンロード
+
+下記URLからpharファイルをダウンロードします。
+
+https://github.com/jhelom/PocketMine-Plugin-LoginAuth/releases
+
+# インストール
+
+pharファイルを pluginsディレクトリ下に配置します。
+
+# PDO(SQLITE)モジュールの導入
+
+PDOについてはPHPの公式ドキュメントを参照してください。
+http://php.net/manual/ja/pdo.installation.php
+
+既に PDO(SQLITE3)モジュールが導入されている場合は、この手順は不要です。
+
+Linux の場合や、Windows でも PHP公式サイトからダウンロードしたPHPを使用している場合は、大抵導入済みのはずです。
+
+PocketMine や Genisys のサイトで提供されている　Minecraft PE用にパッケージされた Windows版PHPインストーラーの場合は、PDOモジュールが同梱されていないようです。
+
+PDOモジュールがない場合は、PHP公式サイトからPHPのZIPダウンロードしてください。
+
+http://windows.php.net/download/
+
+
+* PHPが32ビット版の場合は VC14 x86 Thread Safe の ZIP をダウンロードします。
+* PHPが64ビット版の場合は VC14 x64 Thread Safe の ZIP をダウンロードします。
+
+ZIPを展開したら、そのなかから php_pdo_sqlite.dll を、PocketMine用PHPのディレクトリ(php/bin下)にコピーします。
+
+ファイル構成は下記のようになります。
+```
+Genisys
+   +-- bin
+        +-- php
+             +-- php.exe
+             +-- php.ini
+             +-- php_pdo_sqlite.dll
+
+```
+
+php.ini に下記行を追記します。
+たいていコメントアウトされているので、その場合は先頭のセミコロン(;)を削除します。
+
+```
+extension=php_pdo_sqlite.dll
+```
+
+以上でPDO(SQLITE3)モジュールの導入は完了です。
+
+
+# 設定
+
+PocketMine を起動すると pluginsディレクトリ下に「LoginAuth」ディレクトリが自動的に作成されます。
 
 # Special Thanks
 
