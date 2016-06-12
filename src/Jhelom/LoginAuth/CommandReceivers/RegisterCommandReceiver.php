@@ -3,7 +3,6 @@
 namespace Jhelom\LoginAuth\CommandReceivers;
 
 use Jhelom\LoginAuth\Account;
-use Jhelom\LoginAuth\CommandHookManager;
 use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
@@ -92,33 +91,6 @@ class RegisterCommandReceiver implements ICommandReceiver
         if ($this->isInvalidAccountSlot($player)) {
             return;
         }
-
-        // 「確認のためもう一度パスワードを入力して」メッセージを表示
-        Main::getInstance()->sendMessageResource($sender, "registerConfirm");
-
-        // コマンドフックを登録
-        CommandHookManager::getInstance()->enqueue([$this, "execute2"], $sender, $password);
-    }
-
-    /*
-     * データベースにアカウントを登録する
-     */
-    public function execute2(/** @noinspection PhpUnusedParameterInspection */
-        CommandInvoker $invoker, CommandSender $sender, array $args, $data)
-    {
-        Main::getInstance()->getLogger()->debug("register: execute2: ");
-
-        // 確認用パスワードを引数から取得
-        $password = trim(array_shift($args) ?? "");
-
-        // 確認用パスワードが違う場合
-        if ($data !== $password) {
-            Main::getInstance()->sendMessageResource($sender, "registerConfirmError");
-            return;
-        }
-
-        // Playerクラスにキャスト
-        $player = Main::getInstance()->castCommandSenderToPlayer($sender);
 
         //　データベースに登録
         $sql = "INSERT INTO account (name, clientId, ip, passwordHash, securityStamp, lastLoginTime) VALUES (:name, :clientId, :ip, :passwordHash, :securityStamp, :lastLoginTime)";
