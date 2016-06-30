@@ -63,7 +63,7 @@ class EventListener implements Listener
      */
     public function onPlayerCommand(PlayerCommandPreprocessEvent $event)
     {
-        Main::getInstance()->getLogger()->debug("onPlayerCommand: " . $event->getPlayer()->getName());
+        Main::getInstance()->getLogger()->debug("onPlayerCommand: " . $event->getPlayer()->getName() . ", isCancelled = " . $event->isCancelled());
 
         // インボーカーでコマンドを処理
         $this->invoker->invokePlayerCommand($event);
@@ -75,6 +75,7 @@ class EventListener implements Listener
 
         // イベントがキャンセルされている場合
         if ($event->isCancelled()) {
+            Main::getInstance()->getLogger()->debug("onPlayerCommand: isCancelled");
             return;
         }
 
@@ -83,6 +84,7 @@ class EventListener implements Listener
 
         // ログイン認証されている場合
         if (Main::getInstance()->isAuthenticated($player)) {
+            Main::getInstance()->getLogger()->debug("onPlayerCommand: isAuthenticated");
             return;
         }
 
@@ -107,7 +109,7 @@ class EventListener implements Listener
     /*
      * プレイヤーがログインするときのイベント
      */
-    public function onPlayerPreLogin(PlayerPreLoginEvent $event)
+    public function onLogin(PlayerPreLoginEvent $event)
     {
         Main::getInstance()->getLogger()->debug("onPlayerPreLogin: ");
 
@@ -150,7 +152,7 @@ class EventListener implements Listener
     /*
      * プレイヤーがゲームに参加するときのイベント
      */
-    public function onPlayerJoin(PlayerJoinEvent $event)
+    public function onJoin(PlayerJoinEvent $event)
     {
         Main::getInstance()->getLogger()->debug("onPlayerJoin: ");
 

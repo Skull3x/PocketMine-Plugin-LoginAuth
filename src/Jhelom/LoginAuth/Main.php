@@ -2,6 +2,7 @@
 
 namespace Jhelom\LoginAuth;
 
+use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\level;
 use pocketmine\Player;
@@ -82,6 +83,15 @@ _SQL_;
      */
     public function onDisable()
     {
+    }
+
+    public function onCommand(CommandSender $sender, Command $command, $label, array $args)
+    {
+        parent::onCommand($sender, $command, $label, $args);
+
+        $this->getLogger()->debug("Main.onCommand: " . $sender->getName() . ", " . $command->getName());
+
+        return false;
     }
 
     /*

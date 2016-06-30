@@ -4,13 +4,13 @@ commandAtConsole: §dこのコマンドはコンソールから実行してく�
 commandAtOpOnly: §dこのコマンドはOPのみ実行できます
 commandNeedAuth: §dログイン認証しないとコマンドは実行できません
 
-login: §eログイン認証してください
+login: §eログインしてください。初めての方は /registerでアカウント登録をしてください。
 loginUsage: "§e/login <password>"
 loginSuccessful: §aログイン認証しました
 loginAlready: §aログイン認証済みです
 loginMultiDeviceError: §d重複ログインはできません。先にログインしている端末からログアウトしてください
 
-register: §eはじめての方はアカウント登録してください
+register: §eはじめての方は　/registerでアカウント登録してください
 registerUsage: §e/register <password>
 registerSuccessful: §aアカウントを登録しました。パスワード「§f{password}§a」を忘れないようにしてください
 registerAlready: §e既にアカウントを登録済みです
@@ -48,7 +48,7 @@ accountNotFound: §dアカウント「{name}」は存在しません
 messageResourceNotFound: §dメッセージリソース「{file}」が見つかりません。
 
 authHelp: auth サブコマンドの使用方法(LoginAuth)
-authUsage2: "§aauth find <プレイヤー名の一部> §f: 同一IP同一端末のアカウントを検索"
+authUsage2: "§aauth find <プレイヤー名> §f: 同一IP同一端末のアカウントを検索"
 authUsage3: "§aauth unregister <プレイヤー名> §f: コンソールからアカウント登録"
 authUsage4: "§aauth add <プレイヤー名> [パスワード]　§f: コンソールからアカウント登録"
 
