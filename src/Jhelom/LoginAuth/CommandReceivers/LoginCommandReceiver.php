@@ -119,7 +119,7 @@ class LoginCommandReceiver implements ICommandReceiver
 
         // ログイン成功メッセージを表示
         $msg = Main::getInstance()->getMessage("loginSuccessful");
-        $sender->sendMessage($sender, $msg);
+        $sender->sendMessage($msg);
         Main::getInstance()->getLogger()->info($player->getName() . "(" . $player->getAddress() . ")[" . $player->getClientId() . "]" . $msg);
     }
 }
