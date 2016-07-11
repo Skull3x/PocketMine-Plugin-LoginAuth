@@ -23,6 +23,7 @@ class AuthCommandReceiver implements ICommandReceiver
         $this->subInvoker->add(new UnregisterCommandReceiver());
         $this->subInvoker->add(new AddCommandReceiver());
         $this->subInvoker->add(new FindCommandReceiver());
+        $this->subInvoker->add(new UnlockCommandReceiver());
     }
 
     /*
@@ -74,6 +75,7 @@ class AuthCommandReceiver implements ICommandReceiver
                     "authUsage2",
                     "authUsage3",
                     "authUsage4",
+                    "authUsage5",
                 ]);
         }
     }

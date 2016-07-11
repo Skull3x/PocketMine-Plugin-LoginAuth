@@ -51,6 +51,10 @@ authHelp: auth サブコマンドの使用方法(LoginAuth)
 authUsage2: "§aauth find <プレイヤー名> §f: 同一IP同一端末のアカウントを検索"
 authUsage3: "§aauth unregister <プレイヤー名> §f: コンソールからアカウント登録"
 authUsage4: "§aauth add <プレイヤー名> [パスワード]　§f: コンソールからアカウント登録"
+authUsage5: "§aauth unlock <プレイヤー名> §f: アカウント登録時と端末IDが違うためにログイン禁止のロックを解除"
 
 findHelp: アカウントを名前で検索して、同じIPまたは同じ端末IDの一覧を表示する
 findUsage: "auth find <プレイヤー名>"
+
+lockByClientId: §d端末IDがアカウント登録時と違うためログインできません。なりすまし防止のためアカウントを登録したときと同じ端末からログインしてください。
+unlockSuccess: §aアカウント「{name}」のロックを解除しました。

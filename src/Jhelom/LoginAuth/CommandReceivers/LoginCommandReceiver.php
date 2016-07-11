@@ -11,6 +11,7 @@ use pocketmine\command\CommandSender;
 /*
  * ログイン
  */
+
 class LoginCommandReceiver implements ICommandReceiver
 {
     /*
@@ -88,16 +89,26 @@ class LoginCommandReceiver implements ICommandReceiver
         // パスワードハッシュを比較
         if ($account->passwordHash != $passwordHash) {
             // パスワード不一致メッセージを表示してリターン
-            Main::getInstance()->sendMessageResource($sender, "passwordError");
+            $msg = Main::getInstance()->getMessage("passwordError");
+            $sender->sendMessage($msg);
+            Main::getInstance()->getLogger()->info($player->getName() . "(" . $player->getAddress() . ")[" . $player->getClientId() . "]" . $msg . ":" . $password);
             return;
         }
 
+        // アカウント登録時と端末IDが違う場合
+        if ($account->clientId != "") {
+            if ($account->clientId != $player->getClientId()) {
+                $msg = Main::getInstance()->getMessage("lockByClientId");
+                $sender->sendMessage($msg);
+                Main::getInstance()->getLogger()->info($player->getName() . "(" . $player->getAddress() . ")[" . $player->getClientId() . "]" . $msg . ":" . $password);
+                return;
+            }
+        }
+
         // データベースを更新
-        $sql = "UPDATE account SET ip = :ip ,clientId = :clientId, securityStamp = :securityStamp, lastLoginTime = :lastLoginTime WHERE name = :name";
+        $sql = "UPDATE account SET securityStamp = :securityStamp, lastLoginTime = :lastLoginTime WHERE name = :name";
         $stmt = Main::getInstance()->preparedStatement($sql);
         $stmt->bindValue(":name", strtolower($player->getName()), \PDO::PARAM_STR);
-        $stmt->bindValue(":ip", $player->getAddress(), \PDO::PARAM_STR);
-        $stmt->bindValue(":clientId", $player->getClientId(), \PDO::PARAM_STR);
         $stmt->bindValue(":securityStamp", Account::makeSecurityStamp($player), \PDO::PARAM_STR);
         $now = new \DateTime();
         $stmt->bindValue(":lastLoginTime", $now->format('Y-m-d H:i:s'), \PDO::PARAM_STR);
@@ -107,6 +118,8 @@ class LoginCommandReceiver implements ICommandReceiver
         Main::getInstance()->getLoginCache()->add($player);
 
         // ログイン成功メッセージを表示
-        Main::getInstance()->sendMessageResource($sender, "loginSuccessful");
+        $msg = Main::getInstance()->getMessage("loginSuccessful");
+        $sender->sendMessage($sender, $msg);
+        Main::getInstance()->getLogger()->info($player->getName() . "(" . $player->getAddress() . ")[" . $player->getClientId() . "]" . $msg);
     }
 }
