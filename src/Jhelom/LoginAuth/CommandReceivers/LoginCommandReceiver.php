@@ -95,10 +95,11 @@ class LoginCommandReceiver implements ICommandReceiver
             return;
         }
 
-        // アカウント登録時と端末IDが違う場合
+        // この時点でパスワードは一致している
+        // 前回ログインと比較して端末IDかIPのどちらか一方が一致すればOK、両方とも違えばなりすましとみなしNG
         if ($account->clientId != "") {
-            if ($account->clientId != $player->getClientId()) {
-                $msg = Main::getInstance()->getMessage("lockByClientId");
+            if ($account->clientId != $player->getClientId() && $account->ip != $player->getAddress()) {
+                $msg = Main::getInstance()->getMessage("lock");
                 $sender->sendMessage($msg);
                 Main::getInstance()->getLogger()->info($player->getName() . "(" . $player->getAddress() . ")[" . $player->getClientId() . "]" . $msg . ":" . $password);
                 return;
@@ -106,9 +107,11 @@ class LoginCommandReceiver implements ICommandReceiver
         }
 
         // データベースを更新
-        $sql = "UPDATE account SET securityStamp = :securityStamp, lastLoginTime = :lastLoginTime WHERE name = :name";
+        $sql = "UPDATE account SET clientId = :clientId, ip = :ip, securityStamp = :securityStamp, lastLoginTime = :lastLoginTime WHERE name = :name";
         $stmt = Main::getInstance()->preparedStatement($sql);
         $stmt->bindValue(":name", strtolower($player->getName()), \PDO::PARAM_STR);
+        $stmt->bindValue(":clientId", $player->getClientId(), \PDO::PARAM_STR);
+        $stmt->bindValue(":ip", $player->getAddress(), \PDO::PARAM_STR);
         $stmt->bindValue(":securityStamp", Account::makeSecurityStamp($player), \PDO::PARAM_STR);
         $now = new \DateTime();
         $stmt->bindValue(":lastLoginTime", $now->format('Y-m-d H:i:s'), \PDO::PARAM_STR);
