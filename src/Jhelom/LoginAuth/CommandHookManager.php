@@ -56,7 +56,7 @@ class CommandHookManager
         // Player の場合
         if ($sender instanceof Player) {
             // キャストして
-            $player = Main::castCommandSenderToPlayer($sender);
+            $player = Main::castToPlayer($sender);
 
             // ユニークIDを返す
             return $player->getRawUniqueId();

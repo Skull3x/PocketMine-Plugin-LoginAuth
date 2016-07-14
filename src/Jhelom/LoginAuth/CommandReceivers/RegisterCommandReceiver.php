@@ -60,7 +60,7 @@ class RegisterCommandReceiver implements ICommandReceiver
         $password = trim(array_shift($args) ?? "");
 
         // Playerクラスにキャスト
-        $player = Main::getInstance()->castCommandSenderToPlayer($sender);
+        $player = Main::getInstance()->castToPlayer($sender);
 
         // 既にログイン認証済みの場合
         if (Main::getInstance()->isAuthenticated($player)) {

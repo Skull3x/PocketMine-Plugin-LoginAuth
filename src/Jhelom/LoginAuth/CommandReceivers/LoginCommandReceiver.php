@@ -60,7 +60,7 @@ class LoginCommandReceiver implements ICommandReceiver
         $password = trim(array_shift($args) ?? "");
 
         // Playerクラスにキャスト
-        $player = Main::castCommandSenderToPlayer($sender);
+        $player = Main::castToPlayer($sender);
 
         // 既にログイン認証済みの場合
         if (Main::getInstance()->isAuthenticated($player)) {

@@ -4,7 +4,6 @@ namespace Jhelom\LoginAuth;
 
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
-use pocketmine\level;
 use pocketmine\Player;
 use pocketmine\plugin\PluginBase;
 use pocketmine\utils\Config;
@@ -310,7 +309,7 @@ _SQL_;
     /*
      * CommandSender（基底クラス） を Player（派生クラス）に（タイプヒンティングで疑似的で）ダウンキャストする
      */
-    public static function castCommandSenderToPlayer(CommandSender $sender) : Player
+    public static function castToPlayer($sender) : Player
     {
         return $sender;
     }

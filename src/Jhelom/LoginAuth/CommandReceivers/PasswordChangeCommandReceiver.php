@@ -41,7 +41,7 @@ class PasswordChangeCommandReceiver implements ICommandReceiver
         $newPassword = trim(array_shift($args) ?? "");
 
         // Playerクラスにキャスト
-        $player = Main::getInstance()->castCommandSenderToPlayer($sender);
+        $player = Main::getInstance()->castToPlayer($sender);
 
         // パスワードが不適合の場合
         if (Main::getInstance()->isInvalidPassword($player, $newPassword, "changePasswordUsage")) {
@@ -71,7 +71,7 @@ class PasswordChangeCommandReceiver implements ICommandReceiver
         }
 
         // Playerクラスにキャスト
-        $player = Main::getInstance()->castCommandSenderToPlayer($sender);
+        $player = Main::getInstance()->castToPlayer($sender);
 
         //　データベースに登録
         $sql = "UPDATE account SET passwordHash = :passwordHash WHERE name = :name";

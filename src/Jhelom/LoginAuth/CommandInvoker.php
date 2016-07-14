@@ -120,7 +120,7 @@ class CommandInvoker
         if ($sender instanceof Player) {
             // プレイヤー実行許可がある場合
             if ($receiver->isAllowPlayer()) {
-                $player = Main::castCommandSenderToPlayer($sender);
+                $player = Main::castToPlayer($sender);
 
                 // 認証済みの場合のみ実行許可
                 if ($receiver->isAllowAuthenticated()) {

@@ -24,7 +24,6 @@ use pocketmine\event\player\PlayerMoveEvent;
 use pocketmine\event\player\PlayerPreLoginEvent;
 use pocketmine\event\player\PlayerQuitEvent;
 use pocketmine\event\server\ServerCommandEvent;
-use pocketmine\inventory\InventoryHolder;
 use pocketmine\Player;
 
 /*
@@ -353,18 +352,10 @@ class EventListener implements Listener
 
         if ($holder instanceof Player) {
             // 未認証ならイベントをキャンセル
-            $player = $this->castInventoryHolderToPlayer($holder);
+            $player = Main::castToPlayer($holder);
             $this->cancelEventIfNotAuth($event, $player);
 
         }
-    }
-
-    /*
-     * InventoryHolder を Player にタイプヒンティングで疑似的にキャスト
-     */
-    private function castInventoryHolderToPlayer(InventoryHolder $holder) : Player
-    {
-        return $holder;
     }
 
     /*
@@ -377,7 +368,7 @@ class EventListener implements Listener
             return false;
         }
 
-        $player = Main::castCommandSenderToPlayer($sender);
+        $player = Main::castToPlayer($sender);
 
         // 認証済みの場合
         if (Main::getInstance()->isAuthenticated($player)) {
