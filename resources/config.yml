@@ -7,12 +7,13 @@ locale: ja
 passwordLengthMin: 5
 
 # パスワードの文字数の上限
-passwordLengthMax: 10
+passwordLengthMax: 15
 
 # １つの端末で作成可能なアカウント数の上限
-accountSlot: 2
+accountSlot: 3
 
 # プレイヤー名の文字数の下限
 nameLengthMin: 3
 
-
+#DBファイルの絶対パス（未指定の場合はプラグインフォルダ）
+dbFile: ""

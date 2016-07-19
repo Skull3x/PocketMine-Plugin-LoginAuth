@@ -174,8 +174,15 @@ _SQL_;
      */
     private function openDatabase()
     {
-        // データベースファイルのパスを組み立て
-        $path = rtrim($this->getDataFolder(), "/") . DIRECTORY_SEPARATOR . "account.db";
+        $path = $this->getConfig()->get("dbFile");
+
+        // config で path が指定されていない場合
+        if ($path == NULL && $path == "") {
+            // データベースファイルのパスを組み立て
+            $path = rtrim($this->getDataFolder(), "/") . DIRECTORY_SEPARATOR . "account.db";
+        }
+
+        $this->getLogger()->debug("DB = " . $path);
 
         // データベースファイルが不在なら、初期化フラグを立てる
         $isInitializing = !file_exists($path);
