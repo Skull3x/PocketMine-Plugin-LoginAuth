@@ -2,6 +2,7 @@
 
 namespace Jhelom\LoginAuth;
 
+use pocketmine\item\Minecart;
 use pocketmine\Player;
 
 /*
@@ -67,5 +68,28 @@ class Account
     public static function makePasswordHash(string $password) : string
     {
         return hash(self::HASH_ALGORITHM, $password);
+    }
+
+    public function saveToJson()
+    {
+        $dir = Main::getInstance()->getDataFolder() . "accounts";
+
+        if(!is_dir($dir))
+        {
+            mkdir($dir, true);
+        }
+
+        $path =  $dir . DIRECTORY_SEPARATOR . $this->name . ".json";
+        $data = new AccountData();
+        $data->name = $this->name;
+        $data->ip = $this->ip ?? "";
+        $data->clientId = $this->clientId ?? "";
+        $data->passwordHash = $this->passwordHash ?? "";
+        $data->securityStamp = $this->securityStamp ?? "";
+        $data->lastLoginTime = $this->lastLoginTime ?? "";
+        $json = json_encode($data, JSON_PRETTY_PRINT);
+
+        //Main::getInstance()->getLogger()->info($path . PHP_EOL . $json);
+        file_put_contents($path, $json);
     }
 }

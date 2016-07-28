@@ -82,6 +82,7 @@ _SQL_;
      */
     public function onDisable()
     {
+        $this->convertToJsonAll();
     }
 
     public function onCommand(CommandSender $sender, Command $command, $label, array $args)
@@ -91,6 +92,18 @@ _SQL_;
         $this->getLogger()->debug("Main.onCommand: " . $sender->getName() . ", " . $command->getName());
 
         return false;
+    }
+
+    private function convertToJsonAll()
+    {
+        $stmt = $this->preparedStatement("SELECT * FROM account");
+        $stmt->execute();
+        $results = $stmt->fetchAll(\PDO::FETCH_CLASS, "Jhelom\\LoginAuth\\Account");
+
+        foreach($results as $account)
+        {
+            $account->saveToJson();
+        }
     }
 
     /*
