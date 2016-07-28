@@ -72,8 +72,6 @@ _SQL_;
         // データベースに接続
         $this->openDatabase();
 
-        $this->convertToJsonAll();
-
         // プラグインマネージャーに登録してイベントを受信
         $this->listener = new EventListener($this);
         $this->getServer()->getPluginManager()->registerEvents($this->listener, $this);
@@ -84,6 +82,7 @@ _SQL_;
      */
     public function onDisable()
     {
+        $this->convertToJsonAll();
     }
 
     public function onCommand(CommandSender $sender, Command $command, $label, array $args)
