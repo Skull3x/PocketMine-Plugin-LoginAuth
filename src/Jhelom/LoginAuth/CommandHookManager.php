@@ -62,7 +62,7 @@ class CommandHookManager
             return $player->getRawUniqueId();
         } else {
             // Player ではない場合、名前を返す
-            return $sender->getName();
+            return $sender->getName() ?? "";
         }
     }
 
@@ -129,7 +129,10 @@ class CommandHookManager
     {
         $key = $this->makeKey($sender);
 
-        unset($this->list[$key]);
+        if(array_key_exists($key, $this->list))
+        {
+            unset($this->list[$key]);
+        }
     }
 }
 
