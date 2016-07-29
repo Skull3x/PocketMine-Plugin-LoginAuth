@@ -53,17 +53,7 @@ class CommandHookManager
      */
     public function makeKey(CommandSender $sender) : string
     {
-        // Player の場合
-        if ($sender instanceof Player) {
-            // キャストして
-            $player = Main::castToPlayer($sender);
-
-            // ユニークIDを返す
-            return $player->getRawUniqueId();
-        } else {
-            // Player ではない場合、名前を返す
-            return $sender->getName() ?? "";
-        }
+        return $sender->getName() ?? "";
     }
 
     /*
