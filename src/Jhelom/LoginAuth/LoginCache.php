@@ -19,7 +19,7 @@ class LoginCache
      */
     private function makeKey(Player $player) : string
     {
-        return $player->getRawUniqueId();
+        return strtolower($player->getName()) . "@" . $player->getAddress();
     }
 
     /*
