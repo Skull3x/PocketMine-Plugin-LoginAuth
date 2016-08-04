@@ -2,7 +2,6 @@
 
 namespace Jhelom\LoginAuth;
 
-use pocketmine\item\Minecart;
 use pocketmine\Player;
 
 /*
@@ -46,19 +45,12 @@ class Account
      */
     public static function makeSecurityStamp(Player $player) : string
     {
-        // 名前
         $name = strtolower($player->getName());
-
-        // 端末ID
         $clientId = $player->getClientId();
-
-        // IPアドレス
         $ip = $player->getAddress();
 
-        // 連結
         $seed = $name . $clientId . $ip;
 
-        // ハッシュ
         return hash(self::HASH_ALGORITHM, $seed);
     }
 
@@ -89,7 +81,6 @@ class Account
         $data->lastLoginTime = $this->lastLoginTime ?? "";
         $json = json_encode($data, JSON_PRETTY_PRINT);
 
-        //Main::getInstance()->getLogger()->info($path . PHP_EOL . $json);
         file_put_contents($path, $json);
     }
 }

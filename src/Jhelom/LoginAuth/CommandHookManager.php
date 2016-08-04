@@ -4,7 +4,7 @@ namespace Jhelom\LoginAuth;
 
 
 use pocketmine\command\CommandSender;
-use pocketmine\Player;
+
 
 /*
  * コマンドフックのリストを管理する
@@ -53,7 +53,7 @@ class CommandHookManager
      */
     public function makeKey(CommandSender $sender) : string
     {
-        return $sender->getName() ?? "";
+        return strtolower($sender->getName()) ?? "";
     }
 
     /*

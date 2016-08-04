@@ -29,19 +29,23 @@ class LoginCache
     public function validate(Player $player) : bool
     {
         // キャッシュのスタンプを取得
-        $stamp1 = $this->get($player);
+        $stamp1 = $this->getStamp($player);
 
         // プレイヤーのスタンプを取得
         $stamp2 = Account::makeSecurityStamp($player);
 
         // 比較結果を返す
-        return $stamp1 === $stamp2;
+        if ($stamp1 != $stamp2) {
+            return false;
+        };
+
+        return true;
     }
 
     /*
      * キャッシュからセキュリティスタンプを取得する
      */
-    public function get(Player $player) : string
+    public function getStamp(Player $player) : string
     {
         // キーを生成
         $key = $this->makeKey($player);
@@ -76,10 +80,7 @@ class LoginCache
      */
     public function remove(Player $player)
     {
-        // キーを生成
         $key = $this->makeKey($player);
-
-        // キャッシュから削除
         unset($this->list[$key]);
     }
 }

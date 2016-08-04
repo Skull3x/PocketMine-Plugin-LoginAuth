@@ -62,9 +62,6 @@ class EventListener implements Listener
      */
     public function onPlayerCommand(PlayerCommandPreprocessEvent $event)
     {
-        Main::getInstance()->getLogger()->debug("onPlayerCommand: " . $event->getPlayer()->getName() . ", isCancelled = " . $event->isCancelled());
-
-        // インボーカーでコマンドを処理
         $this->invoker->invokePlayerCommand($event);
 
         // コマンドプレフィックスが付いていない場合
@@ -100,8 +97,6 @@ class EventListener implements Listener
      */
     public function onServerCommand(ServerCommandEvent $event)
     {
-        Main::getInstance()->getLogger()->debug("onServerCommand: " . $event->getSender()->getName());
-
         $this->invoker->invokeServerCommand($event);
     }
 
@@ -110,12 +105,7 @@ class EventListener implements Listener
      */
     public function onLogin(PlayerPreLoginEvent $event)
     {
-        Main::getInstance()->getLogger()->debug("onPlayerPreLogin: ");
-
-        // プレイヤーを取得
         $player = $event->getPlayer();
-
-        // 名前を小文字に変換
         $name = strtolower($player->getName());
 
         // 重複ログインを禁止するために、既に別端末からログインしていたら拒否する
@@ -153,9 +143,6 @@ class EventListener implements Listener
      */
     public function onJoin(PlayerJoinEvent $event)
     {
-        Main::getInstance()->getLogger()->debug("onPlayerJoin: ");
-
-        // プレイヤーを取得
         $player = $event->getPlayer();
 
         // 認証済みなら
@@ -176,18 +163,12 @@ class EventListener implements Listener
      */
     public function onPlayerQuit(PlayerQuitEvent $event)
     {
-        Main::getInstance()->getLogger()->debug("onPlayerQuit: ");
-
-        // プレイヤーを取得
         $player = $event->getPlayer();
 
-        // コマンドフックをクリア
+        Main::getInstance()->getLoginCache()->remove($player);
         CommandHookManager::getInstance()->clear($player);
-
         $key = $player->getRawUniqueId();
         unset($this->lastSendMessageTime[$key]);
-
-        // 座標を削除
         $this->removeJoinPosition($player);
     }
 
@@ -196,9 +177,6 @@ class EventListener implements Listener
      */
     public function onChat(PlayerChatEvent $event)
     {
-        Main::getInstance()->getLogger()->debug("onChat: " . $event->getPlayer() . ": " . $event->getMessage());
-
-        // プレイヤーを取得
         $player = $event->getPlayer();
 
         // 未認証ならイベントをキャンセル
@@ -219,9 +197,6 @@ class EventListener implements Listener
      */
     public function onPlayerMove(PlayerMoveEvent $event)
     {
-        // $this->main->getLogger()->debug("onPlayerMove: ");
-
-        // プレイヤーを取得
         $player = $event->getPlayer();
 
         // 未認証ならイベントをキャンセル
@@ -241,8 +216,6 @@ class EventListener implements Listener
      */
     public function onPlayerInteract(PlayerInteractEvent $event)
     {
-        Main::getInstance()->getLogger()->debug("onPlayerInteract: ");
-
         // プレイヤーを取得
         $player = $event->getPlayer();
 
@@ -255,8 +228,6 @@ class EventListener implements Listener
      */
     public function onPlayerDropItem(PlayerDropItemEvent $event)
     {
-        Main::getInstance()->getLogger()->debug("onPlayerPreLogin: ");
-
         // プレイヤーを取得
         $player = $event->getPlayer();
 
@@ -269,8 +240,6 @@ class EventListener implements Listener
      */
     public function onPlayerItemConsume(PlayerItemConsumeEvent $event)
     {
-        Main::getInstance()->getLogger()->debug("onPlayerItemConsume: ");
-
         // プレイヤーを取得
         $player = $event->getPlayer();
 
@@ -283,8 +252,6 @@ class EventListener implements Listener
      */
     public function onEntityDamage(EntityDamageEvent $event)
     {
-        // $this->main->getLogger()->debug("onEntityDamage: ");
-
         $entity = $event->getEntity();
 
         if ($entity instanceof Player) {
@@ -307,8 +274,6 @@ class EventListener implements Listener
      */
     public function onBlockBreak(BlockBreakEvent $event)
     {
-        Main::getInstance()->getLogger()->debug("onBlockBreak: ");
-
         $player = $event->getPlayer();
 
         // 未認証ならイベントをキャンセル
@@ -320,8 +285,6 @@ class EventListener implements Listener
      */
     public function onBlockPlace(BlockPlaceEvent $event)
     {
-        Main::getInstance()->getLogger()->debug("onBlockPlace: ");
-
         $player = $event->getPlayer();
 
         // 未認証ならイベントをキャンセル
@@ -346,8 +309,6 @@ class EventListener implements Listener
      */
     public function onPickupItem(InventoryPickupItemEvent $event)
     {
-        Main::getInstance()->getLogger()->debug("onPickupItem: ");
-
         $holder = $event->getInventory()->getHolder();
 
         if ($holder instanceof Player) {
