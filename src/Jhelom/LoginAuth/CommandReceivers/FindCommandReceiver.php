@@ -2,7 +2,6 @@
 
 namespace Jhelom\LoginAuth\CommandReceivers;
 
-use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
 use pocketmine\command\CommandSender;
@@ -35,7 +34,7 @@ class FindCommandReceiver implements ICommandReceiver
         return false;
     }
 
-    public function execute(CommandInvoker $invoker, CommandSender $sender, array $args)
+    public function execute(CommandSender $sender, array $args)
     {
         $name = array_shift($args) ?? "";
 

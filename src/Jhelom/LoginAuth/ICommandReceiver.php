@@ -38,6 +38,6 @@ interface ICommandReceiver
     /*
      * 実行
      */
-    public function execute(CommandInvoker $invoker, CommandSender $sender, array $args);
+    public function execute(CommandSender $sender, array $args);
 
 }

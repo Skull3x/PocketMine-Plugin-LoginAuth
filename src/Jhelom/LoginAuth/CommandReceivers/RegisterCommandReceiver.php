@@ -3,7 +3,6 @@
 namespace Jhelom\LoginAuth\CommandReceivers;
 
 use Jhelom\LoginAuth\Account;
-use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
 use pocketmine\command\CommandSender;
@@ -55,7 +54,7 @@ class RegisterCommandReceiver implements ICommandReceiver
     /*
      * 実行
      */
-    public function execute(CommandInvoker $invoker, CommandSender $sender, array $args)
+    public function execute(CommandSender $sender, array $args)
     {
         $password = trim(array_shift($args) ?? "");
 
@@ -114,6 +113,38 @@ class RegisterCommandReceiver implements ICommandReceiver
     /*
      * 端末毎アカウント登録数が不適合ならtrueを返す
      */
+
+    private function isInvalidName(Player $player) : bool
+    {
+        // プレイヤー名を取得
+        $name = $player->getName();
+
+        // 設定ファイルから名前の文字数の下限を取得
+        $min = Main::getInstance()->getConfig()->get("nameLengthMin");
+
+        $errorMessage = Main::getInstance()->getMessage("registerNameRule", ["min" => $min]);
+
+        if (!preg_match("/^[a-zA-Z0-9_]+$/", $name)) {
+            $player->sendMessage($errorMessage);
+            return true;
+        }
+
+        // 名前の文字数を取得
+        $len = strlen($name);
+
+        // 名前が短い場合
+        if ($len < $min) {
+            $player->sendMessage($errorMessage);
+            return true;
+        }
+
+        return false;
+    }
+
+    /*
+     * 名前が不適合ならtrueを返す
+     */
+
     private function isInvalidAccountSlot(Player $player) : bool
     {
         // 端末IDをもとにデータベースからアカウント一覧を取得
@@ -145,36 +176,6 @@ class RegisterCommandReceiver implements ICommandReceiver
 
             $player->sendMessage($nameListStr);
 
-            return true;
-        }
-
-        return false;
-    }
-
-    /*
-     * 名前が不適合ならtrueを返す
-     */
-    private function isInvalidName(Player $player) : bool
-    {
-        // プレイヤー名を取得
-        $name = $player->getName();
-
-        // 設定ファイルから名前の文字数の下限を取得
-        $min = Main::getInstance()->getConfig()->get("nameLengthMin");
-
-        $errorMessage = Main::getInstance()->getMessage("registerNameRule", ["min" => $min]);
-
-        if (!preg_match("/^[a-zA-Z0-9_]+$/", $name)) {
-            $player->sendMessage($errorMessage);
-            return true;
-        }
-
-        // 名前の文字数を取得
-        $len = strlen($name);
-
-        // 名前が短い場合
-        if ($len < $min) {
-            $player->sendMessage($errorMessage);
             return true;
         }
 

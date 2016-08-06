@@ -2,8 +2,6 @@
 
 namespace Jhelom\LoginAuth\CommandReceivers;
 
-use Jhelom\LoginAuth\CommandHookManager;
-use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
 use pocketmine\command\CommandSender;
@@ -50,7 +48,7 @@ class UnregisterCommandReceiver implements ICommandReceiver
     /*
      * 実行
      */
-    public function execute(CommandInvoker $invoker, CommandSender $sender, array $args)
+    public function execute(CommandSender $sender, array $args)
     {
         Main::getInstance()->getLogger()->debug("UnregisterCommandReceiver.execute: ");
 
@@ -73,31 +71,6 @@ class UnregisterCommandReceiver implements ICommandReceiver
             Main::getInstance()->sendMessageResource($sender, "accountNotFound", ["name" => $targetPlayerName]);
             return;
         }
-
-        // 確認入力してくれメッセージを表示
-        Main::getInstance()->sendMessageResource($sender, "unregisterConfirm", ["name" => $targetPlayerName]);
-
-        // コマンドフックを追加
-        CommandHookManager::getInstance()->enqueue([$this, "execute2"], $sender, $targetPlayerName);
-    }
-
-    /*
-     * 削除
-     */
-    public function execute2(/** @noinspection PhpUnusedParameterInspection */
-        CommandInvoker $invoker, CommandSender $sender, array $args, $data)
-    {
-        // 確認入力を取得
-        $input = strtolower(array_shift($args) ?? "");
-
-        // Y以外の場合
-        if ($input !== "y") {
-            Main::getInstance()->sendMessageResource($sender, "unregisterCancel");
-            return;
-        }
-
-        // 削除対象プレイヤー名をコマンドフックのデータから取得
-        $targetPlayerName = $data;
 
         // アカウントを検索
         $account = Main::getInstance()->findAccountByName($targetPlayerName);
