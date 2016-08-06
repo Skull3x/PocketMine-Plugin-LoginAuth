@@ -52,10 +52,6 @@ _SQL_;
         return $sender;
     }
 
-    /*
-     * プラグインが有効化されたときのイベント
-     */
-
     public function onEnable()
     {
         $this->getLogger()->info("§a開発者 Jhelom & Dragon7");
@@ -89,10 +85,6 @@ _SQL_;
         $this->listener = new EventListener($this);
         $this->getServer()->getPluginManager()->registerEvents($this->listener, $this);
     }
-
-    /*
-     * プラグインが無効化されたときのイベント
-     */
 
     private function loadMessageResource(string $locale = NULL)
     {
@@ -164,50 +156,25 @@ _SQL_;
         }
     }
 
-    /*
-     * メッセージリソースをロード
-     */
-
     public function preparedStatement(string $sql) : \PDOStatement
     {
         return $this->getDatabase()->prepare($sql);
     }
-
-    /*
-     * メッセージリソースを送信する
-     *
-     * 単一のメッセージを送信する場合は keys に　string を渡す
-     * 複数のメッセージを送信する場合は keys に array を渡す
-     */
 
     private function getDatabase() : \PDO
     {
         return $this->pdo;
     }
 
-    /*
-     * メッセージリソースを取得
-     *
-     * 引数 args に連想配列を渡すとメッセージの文字列中にプレースフォルダ（波括弧）を置換する
-     */
-
     public function onCommand(CommandSender $sender, Command $command, $label, array $args)
     {
         return $this->getInvoker()->execute($sender, $command->getName(), $args);
     }
 
-    /*
-     * データベースに接続
-     */
-
     public function getInvoker() : CommandInvoker
     {
         return $this->invoker;
     }
-
-    /*
-     * セキュリティスタンプマネージャーを取得
-     */
 
     function isRegistered(Player $player) : bool
     {
@@ -220,10 +187,6 @@ _SQL_;
             return true;
         }
     }
-
-    /*
-     * アカウント登録済みなら true を返す
-     */
 
     public function findAccountByName(string $name) : Account
     {
@@ -245,11 +208,6 @@ _SQL_;
         return $account;
     }
 
-    /*
-     * 名前をもとにデータベースからアカウントを検索する
-     * 不在の場合は isNullフィールドが true のアカウントを返す
-     */
-
     public function findAccountListByClientId(string $clientId) : array
     {
         $sql = "SELECT * FROM account WHERE clientId = :clientId ORDER BY name";
@@ -262,11 +220,6 @@ _SQL_;
 
         return $results;
     }
-
-    /*
-     * 端末IDをもとにデータベースからアカウントを検索して、Accountクラスの配列を返す
-     * 不在の場合は、空の配列を返す
-     */
 
     public function isAuthenticated(Player $player) :bool
     {
@@ -295,18 +248,10 @@ _SQL_;
         return true;
     }
 
-    /*
-     * SQLプリペアドステートメント
-     */
-
     public function getLoginCache() : LoginCache
     {
         return $this->loginCache;
     }
-
-    /*
-     * データベースを取得
-     */
 
     public function isInvalidPassword(CommandSender $sender, string $password, string $usage = NULL) : bool
     {
@@ -349,10 +294,6 @@ _SQL_;
         return false;
     }
 
-    /*
-     * 認証済みなら true を返す
-     */
-
     public function sendMessageResource(CommandSender $sender, $keys, array $args = NULL)
     {
         // keys が配列ではない場合
@@ -366,10 +307,6 @@ _SQL_;
             $sender->sendMessage($this->getMessage($key, $args));
         }
     }
-
-    /*
-     * CommandSender（基底クラス） を Player（派生クラス）に（タイプヒンティングで疑似的で）ダウンキャストする
-     */
 
     public function getMessage(string $key, array $args = NULL) : string
     {
@@ -396,15 +333,10 @@ _SQL_;
         return $message;
     }
 
-    /*
-     * パスワードが不適合ならtrueを返す
-    */
-
     public static function getInstance() : Main
     {
         return self::$instance;
     }
-
 }
 
 ?>
