@@ -2,6 +2,10 @@
 
 namespace Jhelom\LoginAuth;
 
+use Jhelom\LoginAuth\CommandReceivers\AuthCommandReceiver;
+use Jhelom\LoginAuth\CommandReceivers\LoginCommandReceiver;
+use Jhelom\LoginAuth\CommandReceivers\PasswordChangeCommandReceiver;
+use Jhelom\LoginAuth\CommandReceivers\RegisterCommandReceiver;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\Player;
@@ -11,18 +15,21 @@ use pocketmine\utils\Config;
 class Main extends PluginBase
 {
     // データベース
-    private $pdo;
+    private static $instance;
 
     // リスナー
-    private $listener;
+    private $pdo;
 
     // メッセージリソース
-    private $messageResource;
+    private $listener;
 
     // ログインキャッシュ
-    private $loginCache;
+    private $messageResource;
 
     // データベース初期化SQL
+    private $loginCache;
+
+    // インスタンスを保持
     private $databaseSchema = <<<_SQL_
 CREATE TABLE [account] (
 [name] TEXT NOT NULL UNIQUE,
@@ -35,20 +42,16 @@ PRIMARY KEY(name)
 );                
 _SQL_;
 
-    // インスタンスを保持
-    private static $instance;
-
     /*
      * インスタンスを取得
      */
-    public static function getInstance() : Main
+    private $invoker;
+
+    public static function castToPlayer($sender) : Player
     {
-        return self::$instance;
+        return $sender;
     }
 
-    /*
-     * プラグインが有効化されたときのイベント
-     */
     public function onEnable()
     {
         $this->getLogger()->info("§a開発者 Jhelom & Dragon7");
@@ -72,30 +75,17 @@ _SQL_;
         // データベースに接続
         $this->openDatabase();
 
+        $this->invoker = new CommandInvoker();
+        $this->invoker->add(new RegisterCommandReceiver());
+        $this->invoker->add(new LoginCommandReceiver());
+        $this->invoker->add(new AuthCommandReceiver());
+        $this->invoker->add(new PasswordChangeCommandReceiver());
+
         // プラグインマネージャーに登録してイベントを受信
         $this->listener = new EventListener($this);
         $this->getServer()->getPluginManager()->registerEvents($this->listener, $this);
     }
 
-    /*
-     * プラグインが無効化されたときのイベント
-     */
-    public function onDisable()
-    {
-    }
-
-    public function onCommand(CommandSender $sender, Command $command, $label, array $args)
-    {
-        parent::onCommand($sender, $command, $label, $args);
-
-        $this->getLogger()->debug("Main.onCommand: " . $sender->getName() . ", " . $command->getName());
-
-        return false;
-    }
-
-    /*
-     * メッセージリソースをロード
-     */
     private function loadMessageResource(string $locale = NULL)
     {
         // NULLの場合、デフォルトの言語にする
@@ -119,59 +109,6 @@ _SQL_;
         $this->messageResource = new Config($path, Config::YAML);
     }
 
-    /*
-     * メッセージリソースを送信する
-     *
-     * 単一のメッセージを送信する場合は keys に　string を渡す
-     * 複数のメッセージを送信する場合は keys に array を渡す
-     */
-    public function sendMessageResource(CommandSender $sender, $keys, array $args = NULL)
-    {
-        // keys が配列ではない場合
-        if (!is_array($keys)) {
-            // 配列に変換
-            $keys = [$keys];
-        }
-
-        // keys をループ
-        foreach ($keys as $key) {
-            $sender->sendMessage($this->getMessage($key, $args));
-        }
-    }
-
-    /*
-     * メッセージリソースを取得
-     *
-     * 引数 args に連想配列を渡すとメッセージの文字列中にプレースフォルダ（波括弧）を置換する
-     */
-    public function getMessage(string $key, array $args = NULL) : string
-    {
-        /** @noinspection PhpUndefinedMethodInspection */
-        $message = $this->messageResource->get($key);
-
-        if ($message == NULL || $message == "") {
-            $this->getLogger()->warning("メッセージリソース不在: " . $key);
-            $message = $key;
-        }
-
-        // args が配列の場合
-        if (is_array($args)) {
-            // 配列をループ
-            foreach ($args as $key => $value) {
-                // プレースフォルダを組み立て
-                $placeHolder = "{" . $key . "}";
-
-                // プレースフォルダをバリューで置換
-                $message = str_replace($placeHolder, $value, $message);
-            }
-        }
-
-        return $message;
-    }
-
-    /*
-     * データベースに接続
-     */
     private function openDatabase()
     {
         $path = $this->getConfig()->get("dbFile");
@@ -203,17 +140,42 @@ _SQL_;
         }
     }
 
-    /*
-     * セキュリティスタンプマネージャーを取得
-     */
-    public function getLoginCache() : LoginCache
+    public function onDisable()
     {
-        return $this->loginCache;
+        $this->convertToJsonAll();
     }
 
-    /*
-     * アカウント登録済みなら true を返す
-     */
+    private function convertToJsonAll()
+    {
+        $stmt = $this->preparedStatement("SELECT * FROM account");
+        $stmt->execute();
+        $results = $stmt->fetchAll(\PDO::FETCH_CLASS, "Jhelom\\LoginAuth\\Account");
+
+        foreach ($results as $account) {
+            $account->saveToJson();
+        }
+    }
+
+    public function preparedStatement(string $sql) : \PDOStatement
+    {
+        return $this->getDatabase()->prepare($sql);
+    }
+
+    private function getDatabase() : \PDO
+    {
+        return $this->pdo;
+    }
+
+    public function onCommand(CommandSender $sender, Command $command, $label, array $args)
+    {
+        return $this->getInvoker()->execute($sender, $command->getName(), $args);
+    }
+
+    public function getInvoker() : CommandInvoker
+    {
+        return $this->invoker;
+    }
+
     function isRegistered(Player $player) : bool
     {
         // アカウントを検索
@@ -226,10 +188,6 @@ _SQL_;
         }
     }
 
-    /*
-     * 名前をもとにデータベースからアカウントを検索する
-     * 不在の場合は isNullフィールドが true のアカウントを返す
-     */
     public function findAccountByName(string $name) : Account
     {
         $sql = "SELECT * FROM account WHERE name = :name";
@@ -250,10 +208,6 @@ _SQL_;
         return $account;
     }
 
-    /*
-     * 端末IDをもとにデータベースからアカウントを検索して、Accountクラスの配列を返す
-     * 不在の場合は、空の配列を返す
-     */
     public function findAccountListByClientId(string $clientId) : array
     {
         $sql = "SELECT * FROM account WHERE clientId = :clientId ORDER BY name";
@@ -267,25 +221,6 @@ _SQL_;
         return $results;
     }
 
-    /*
-     * SQLプリペアドステートメント
-     */
-    public function preparedStatement(string $sql) : \PDOStatement
-    {
-        return $this->getDatabase()->prepare($sql);
-    }
-
-    /*
-     * データベースを取得
-     */
-    private function getDatabase() : \PDO
-    {
-        return $this->pdo;
-    }
-
-    /*
-     * 認証済みなら true を返す
-     */
     public function isAuthenticated(Player $player) :bool
     {
         // キャッシュを検証
@@ -313,17 +248,11 @@ _SQL_;
         return true;
     }
 
-    /*
-     * CommandSender（基底クラス） を Player（派生クラス）に（タイプヒンティングで疑似的で）ダウンキャストする
-     */
-    public static function castToPlayer($sender) : Player
+    public function getLoginCache() : LoginCache
     {
-        return $sender;
+        return $this->loginCache;
     }
 
-    /*
-     * パスワードが不適合ならtrueを返す
-    */
     public function isInvalidPassword(CommandSender $sender, string $password, string $usage = NULL) : bool
     {
         // パスワードが空欄の場合
@@ -365,6 +294,49 @@ _SQL_;
         return false;
     }
 
+    public function sendMessageResource(CommandSender $sender, $keys, array $args = NULL)
+    {
+        // keys が配列ではない場合
+        if (!is_array($keys)) {
+            // 配列に変換
+            $keys = [$keys];
+        }
+
+        // keys をループ
+        foreach ($keys as $key) {
+            $sender->sendMessage($this->getMessage($key, $args));
+        }
+    }
+
+    public function getMessage(string $key, array $args = NULL) : string
+    {
+        /** @noinspection PhpUndefinedMethodInspection */
+        $message = $this->messageResource->get($key);
+
+        if ($message == NULL || $message == "") {
+            $this->getLogger()->warning("メッセージリソース不在: " . $key);
+            $message = $key;
+        }
+
+        // args が配列の場合
+        if (is_array($args)) {
+            // 配列をループ
+            foreach ($args as $key => $value) {
+                // プレースフォルダを組み立て
+                $placeHolder = "{" . $key . "}";
+
+                // プレースフォルダをバリューで置換
+                $message = str_replace($placeHolder, $value, $message);
+            }
+        }
+
+        return $message;
+    }
+
+    public static function getInstance() : Main
+    {
+        return self::$instance;
+    }
 }
 
 ?>

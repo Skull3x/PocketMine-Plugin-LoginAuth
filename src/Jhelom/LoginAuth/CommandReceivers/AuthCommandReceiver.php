@@ -66,9 +66,11 @@ class AuthCommandReceiver implements ICommandReceiver
     /*
      * 実行
      */
-    public function execute(CommandInvoker $invoker, CommandSender $sender, array $args)
+    public function execute(CommandSender $sender, array $args)
     {
-        if (!$this->subInvoker->invoke($sender, $args)) {
+        $cmd = array_shift($args) ?? "";
+
+        if (!$this->subInvoker->execute($sender, $cmd, $args)) {
             Main::getInstance()->sendMessageResource($sender,
                 [
                     "authHelp",

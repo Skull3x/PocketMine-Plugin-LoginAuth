@@ -4,7 +4,6 @@ namespace Jhelom\LoginAuth\CommandReceivers;
 
 
 use Jhelom\LoginAuth\Account;
-use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
 use pocketmine\command\CommandSender;
@@ -36,7 +35,7 @@ class AddCommandReceiver implements ICommandReceiver
         return false;
     }
 
-    public function execute(CommandInvoker $invoker, CommandSender $sender, array $args)
+    public function execute(CommandSender $sender, array $args)
     {
         // プレイヤー名を取得
         $name = strtolower(array_shift($args) ?? "");

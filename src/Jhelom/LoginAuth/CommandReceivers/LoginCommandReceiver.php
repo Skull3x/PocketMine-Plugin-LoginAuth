@@ -3,7 +3,6 @@
 namespace Jhelom\LoginAuth\CommandReceivers;
 
 use Jhelom\LoginAuth\Account;
-use Jhelom\LoginAuth\CommandInvoker;
 use Jhelom\LoginAuth\ICommandReceiver;
 use Jhelom\LoginAuth\Main;
 use pocketmine\command\CommandSender;
@@ -54,7 +53,7 @@ class LoginCommandReceiver implements ICommandReceiver
     /*
      * 実行
      */
-    public function execute(CommandInvoker $invoker, CommandSender $sender, array $args)
+    public function execute(CommandSender $sender, array $args)
     {
         // 引数からパスワードを取得
         $password = trim(array_shift($args) ?? "");

@@ -3,14 +3,14 @@
 namespace Jhelom\LoginAuth;
 
 use pocketmine\command\CommandSender;
-use pocketmine\event\player\PlayerCommandPreprocessEvent;
-use pocketmine\event\server\ServerCommandEvent;
 use pocketmine\Player;
 use pocketmine\Server;
+
 
 /*
  * コマンドインボーカー
  */
+
 class CommandInvoker
 {
     // コマンドのプレフィックス
@@ -35,77 +35,37 @@ class CommandInvoker
         $this->list[$name] = $receiver;
     }
 
-    /*
-     * コンソール（サーバー）のコマンドを処理
-     */
-    public function invokeServerCommand(ServerCommandEvent $event)
+    public function getNames() : array
     {
-        Main::getInstance()->getLogger()->debug("invokeServerCommand: " . $event->getSender()->getName() . ": " . $event->getCommand());
-
-        $sender = $event->getSender();
-        $args = explode(" ", $event->getCommand());
-
-        if ($this->invoke($sender, $args)) {
-            $event->setCancelled(true);
-        }
+        return array_keys($this->list);
     }
 
-    /*
-     * プレイヤーのコマンドを処理
-     */
-    public function invokePlayerCommand(PlayerCommandPreprocessEvent $event)
+    public function exists(string $name):bool
     {
-        Main::getInstance()->getLogger()->debug("invokePlayerCommand: " . $event->getPlayer()->getName() . ": " . $event->getMessage());
-
-        $sender = $event->getPlayer();
-        $args = explode(" ", $event->getMessage());
-
-        if ($this->invoke($sender, $args, true)) {
-            $event->setCancelled(true);
-        }
+        $key = strtolower($name);
+        return array_key_exists($key, $this->list);
     }
 
     /*
     * コマンドレシーバーを呼び出す
     * イベントをキャンセルする必要がある場合は　true を返す
     */
-    public function invoke(CommandSender $sender, array $args, bool $useCommandPrefix = false) :bool
+    public function execute(CommandSender $sender, string $cmd, array $args) :bool
     {
-        $hook = CommandHookManager::getInstance()->dequeue($sender);
-
-        // フックがある場合
-        if (!$hook->isNull) {
-            Main::getInstance()->getLogger()->debug("call hook");
-            call_user_func($hook->callback, $this, $sender, $args, $hook->data);
-            return true;
-        }
-
-        // 引数からコマンドを取得
-        $command = array_shift($args) ?? "";
-
-        // コマンドプレフィックスを使う場合
-        if ($useCommandPrefix) {
-            // 文字列の先頭がコマンドプレフィックスではない場合
-            if (strpos($command, self::COMMAND_PREFIX) !== 0) {
-                return false;
-            }
-
-            // コマンドプレフィックスを除去
-            $command = ltrim($command, self::COMMAND_PREFIX);
-        }
+        $key = strtolower($cmd);
 
         // コマンドレシーバーのリストにキー（コマンド名）が不在の場合
-        if (!array_key_exists($command, $this->list)) {
+        if (!array_key_exists($key, $this->list)) {
             return false;
         }
 
         // コマンドレシーバーを取得
-        $receiver = $this->get($command);
+        $receiver = $this->get($key);
 
         // レシーバーの実行権限がある場合
         if ($this->checkPermission($sender, $receiver)) {
             // レシーバーを実行
-            $receiver->execute($this, $sender, $args);
+            $receiver->execute($sender, $args);
         }
 
         return true;
@@ -114,6 +74,16 @@ class CommandInvoker
     /*
      * 実行権限を検証。実行許可OKならtrueを返す
      */
+
+    private function get(string $name) : ICommandReceiver
+    {
+        return $this->list[$name];
+    }
+
+    /*
+     * コマンドレシーバーを取得
+     */
+
     private function checkPermission(CommandSender $sender, ICommandReceiver $receiver) : bool
     {
         // プレイヤーの場合
@@ -156,13 +126,5 @@ class CommandInvoker
                 return false;
             }
         }
-    }
-
-    /*
-     * コマンドレシーバーを取得
-     */
-    private function get(string $name) : ICommandReceiver
-    {
-        return $this->list[$name];
     }
 }
