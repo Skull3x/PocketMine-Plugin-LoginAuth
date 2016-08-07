@@ -188,7 +188,9 @@ class EventListener implements Listener
         $msg = $event->getMessage();
 
         foreach (Main::getInstance()->getInvoker()->getNames() as $name) {
-            if (strpos($name, "/" . $msg) === 0) {
+            Main::getInstance()->getLogger()->debug("/" . $name . " = " . $msg);
+
+            if (strpos($msg, "/" . $name) === 0) {
                 return;
             }
         }
